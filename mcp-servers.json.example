@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "example-stdio": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-math"]
+    },
+    "example-http": {
+      "transport": "http",
+      "url": "http://localhost:3001/mcp"
+    }
+  }
+}
