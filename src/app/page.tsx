@@ -1,195 +1,340 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Bubble, type BubbleItemType } from "@ant-design/x";
+import { Sender } from "@ant-design/x";
+import { Conversations } from "@ant-design/x";
+import { Welcome } from "@ant-design/x";
+import { Button, Spin, message as antdMessage } from "antd";
+import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
+// ============================================================
+// 数据类型
+// ============================================================
+
+interface ThreadItem {
+  key: string;
+  label: string;
 }
 
+// ============================================================
+// 页面组件
+// ============================================================
+
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<BubbleItemType[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [threads, setThreads] = useState<ThreadItem[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const bubbleListRef = useRef<any>(null);
 
-  // 自动滚动到底部
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  // ----------------------------------------------------------
+  // 会话列表
+  // ----------------------------------------------------------
 
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
-    if (!text || isLoading) return;
-
-    // 添加用户消息
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-    setInput("");
-    setIsLoading(true);
-
+  const loadThreads = useCallback(async () => {
+    setThreadsLoading(true);
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, threadId, stream: true }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      // 添加空的 assistant 消息用于流式填充
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = "";
-
-      if (!reader) throw new Error("无法读取响应流");
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-
-            if (data.type === "content") {
-              assistantContent += data.content;
-              setMessages((prev) => {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: assistantContent,
-                };
-                return updated;
-              });
-            }
-
-            if (data.type === "done" && data.threadId) {
-              setThreadId(data.threadId);
-            }
-
-            if (data.type === "error") {
-              throw new Error(data.error);
-            }
-          } catch {
-            // 忽略解析错误（可能是不完整的行）
-          }
-        }
-      }
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev.slice(0, -1), // 移除空的 assistant 消息
-        {
-          role: "assistant",
-          content: `❌ 错误: ${error instanceof Error ? error.message : "请求失败"}`,
-        },
-      ]);
+      const res = await fetch("/api/threads");
+      const data = await res.json();
+      const items: ThreadItem[] = (data.threads || []).map(
+        (t: { threadId: string }) => ({
+          key: t.threadId,
+          label: `会话 ${t.threadId.slice(0, 8)}...`,
+        })
+      );
+      setThreads(items);
+    } catch {
+      // 忽略
     } finally {
-      setIsLoading(false);
+      setThreadsLoading(false);
     }
-  }, [input, isLoading, threadId]);
+  }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
+  useEffect(() => {
+    loadThreads();
+  }, [loadThreads]);
 
-  const clearChat = () => {
+  // ----------------------------------------------------------
+  // 切换会话
+  // ----------------------------------------------------------
+
+  const switchThread = useCallback((key: string) => {
+    setThreadId(key);
+    setMessages([]);
+    // TODO: 后续可通过 API 加载历史消息
+  }, []);
+
+  // ----------------------------------------------------------
+  // 新对话
+  // ----------------------------------------------------------
+
+  const createNewChat = useCallback(async () => {
     setMessages([]);
     setThreadId(null);
-  };
+    setInput("");
+  }, []);
+
+  // ----------------------------------------------------------
+  // 发送消息
+  // ----------------------------------------------------------
+
+  const sendMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim() || isLoading) return;
+
+      const userMsg: BubbleItemType = {
+        key: `user-${Date.now()}`,
+        role: "user",
+        content: text,
+      };
+      const assistantMsg: BubbleItemType = {
+        key: `ai-${Date.now()}`,
+        role: "ai",
+        content: "",
+        status: "loading",
+      };
+
+      setMessages((prev) => [...prev, userMsg, assistantMsg]);
+      setInput("");
+      setIsLoading(true);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, threadId, stream: true }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let assistantContent = "";
+
+        if (!reader) throw new Error("无法读取响应流");
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === "content") {
+                assistantContent += data.content;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  updated[updated.length - 1] = {
+                    ...last,
+                    content: assistantContent,
+                    status: "success",
+                  };
+                  return updated;
+                });
+              }
+
+              if (data.type === "done" && data.threadId) {
+                setThreadId(data.threadId);
+                loadThreads();
+              }
+
+              if (data.type === "error") {
+                throw new Error(data.error);
+              }
+            } catch {
+              // 忽略解析错误
+            }
+          }
+        }
+      } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: `❌ 错误: ${error instanceof Error ? error.message : "请求失败"}`,
+            status: "error",
+          };
+          return updated;
+        });
+      } finally {
+        setIsLoading(false);
+        abortRef.current = null;
+      }
+    },
+    [isLoading, threadId, loadThreads]
+  );
+
+  // ----------------------------------------------------------
+  // 取消生成
+  // ----------------------------------------------------------
+
+  const cancelGeneration = useCallback(() => {
+    abortRef.current?.abort();
+    setIsLoading(false);
+  }, []);
+
+  // ----------------------------------------------------------
+  // 删除会话
+  // ----------------------------------------------------------
+
+  const deleteThread = useCallback(
+    async (key: string) => {
+      try {
+        await fetch(`/api/threads?id=${key}`, { method: "DELETE" });
+        if (key === threadId) {
+          setThreadId(null);
+          setMessages([]);
+        }
+        loadThreads();
+      } catch {
+        antdMessage.error("删除会话失败");
+      }
+    },
+    [threadId, loadThreads]
+  );
+
+  // ----------------------------------------------------------
+  // 渲染
+  // ----------------------------------------------------------
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-50 dark:bg-zinc-900">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-            AI Assistant
-          </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Next.js + LangGraph + MongoDB
-            {threadId && (
-              <span className="ml-2 text-xs opacity-60">
-                Thread: {threadId.slice(0, 8)}...
-              </span>
-            )}
-          </p>
-        </div>
-        <button
-          onClick={clearChat}
-          className="px-3 py-1.5 text-sm rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      {/* 侧边栏 */}
+      <div
+        style={{
+          width: 260,
+          borderRight: "1px solid rgba(0,0,0,0.06)",
+          display: "flex",
+          flexDirection: "column",
+          background: "rgba(0,0,0,0.02)",
+        }}
+      >
+        <div
+          style={{
+            padding: "16px 12px 8px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
         >
-          新对话
-        </button>
-      </header>
-
-      {/* Messages */}
-      <main className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-3xl mx-auto space-y-6">
-          {messages.length === 0 && (
-            <div className="text-center text-zinc-400 dark:text-zinc-600 py-20">
-              <p className="text-lg">👋 你好！有什么可以帮你的？</p>
-              <p className="text-sm mt-2">
-                输入消息开始对话，Agent 会自动使用可用工具
-              </p>
-            </div>
-          )}
-
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-br-md"
-                    : "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 rounded-bl-md"
-                }`}
-              >
-                {msg.content || (
-                  <span className="inline-block w-2 h-4 bg-zinc-400 animate-pulse rounded-sm" />
-                )}
-              </div>
-            </div>
-          ))}
-
-          <div ref={messagesEndRef} />
-        </div>
-      </main>
-
-      {/* Input */}
-      <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-4">
-        <div className="max-w-3xl mx-auto flex gap-3">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
-            rows={1}
-            className="flex-1 resize-none rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-            disabled={isLoading}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={isLoading || !input.trim()}
-            className="px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.65 }}>
+            会话列表
+          </span>
+          <Button
+            type="text"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={createNewChat}
           >
-            {isLoading ? "..." : "发送"}
-          </button>
+            新对话
+          </Button>
         </div>
-      </footer>
+        <div style={{ flex: 1, overflow: "auto", padding: "0 4px" }}>
+          <Spin spinning={threadsLoading}>
+            <Conversations
+              items={threads}
+              activeKey={threadId ?? undefined}
+              onActiveChange={switchThread}
+              menu={(item) => ({
+                items: [
+                  {
+                    key: "delete",
+                    label: "删除",
+                    icon: <DeleteOutlined />,
+                    danger: true,
+                    onClick: () => deleteThread(item.key),
+                  },
+                ],
+              })}
+              creation={{ onClick: createNewChat }}
+            />
+          </Spin>
+        </div>
+      </div>
+
+      {/* 主区域 */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {/* 消息区 */}
+        <div style={{ flex: 1, overflow: "auto", padding: "16px 24px" }}>
+          {messages.length === 0 ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100%",
+              }}
+            >
+              <Welcome
+                icon="🤖"
+                title="AI Assistant"
+                description="Next.js + LangGraph + MongoDB 智能助手，输入消息开始对话"
+                variant="borderless"
+              />
+            </div>
+          ) : (
+            <Bubble.List
+              ref={bubbleListRef}
+              items={messages}
+              autoScroll
+              style={{ maxWidth: 800, margin: "0 auto" }}
+              role={{
+                user: {
+                  placement: "end",
+                  variant: "shadow",
+                },
+                ai: {
+                  placement: "start",
+                  variant: "borderless",
+                  typing: { effect: "typing", step: 3, interval: 50 },
+                },
+              }}
+            />
+          )}
+        </div>
+
+        {/* 输入区 */}
+        <div
+          style={{
+            padding: "12px 24px 16px",
+            maxWidth: 800,
+            width: "100%",
+            margin: "0 auto",
+          }}
+        >
+          <Sender
+            value={input}
+            onChange={setInput}
+            onSubmit={sendMessage}
+            onCancel={cancelGeneration}
+            loading={isLoading}
+            placeholder="输入消息..."
+            style={{ width: "100%" }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
