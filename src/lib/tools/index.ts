@@ -21,39 +21,45 @@ const localTools: StructuredTool[] = [getCurrentTimeTool, calculatorTool];
 // 取消注释以下代码即可启用 MCP 工具
 // ============================================================
 //
-// import { MultiServerMCPClient } from "@langchain/mcp-adapters";
-// import { config } from "@/lib/config";
-// import { readFileSync } from "fs";
-//
-// let mcpClient: MultiServerMCPClient | null = null;
-//
-// async function getMcpTools(): Promise<Tool[]> {
-//   try {
-//     // 从配置文件或环境变量读取 MCP 服务器配置
-//     let mcpServers: Record<string, any> = {};
-//
-//     try {
-//       const raw = readFileSync(config.mcp.configPath, "utf-8");
-//       mcpServers = JSON.parse(raw).mcpServers || {};
-//     } catch {
-//       // 配置文件不存在，跳过
-//     }
-//
-//     if (Object.keys(mcpServers).length === 0) return [];
-//
-//     mcpClient = new MultiServerMCPClient({
-//       mcpServers,
-//       throwOnLoadError: false,
-//       prefixToolNameWithServerName: true,
-//       useStandardContentBlocks: true,
-//     });
-//
-//     return await mcpClient.getTools();
-//   } catch (error) {
-//     console.error("Failed to load MCP tools:", error);
-//     return [];
-//   }
-// }
+import { MultiServerMCPClient } from "@langchain/mcp-adapters";
+import { config } from "@/lib/config";
+import { readFileSync } from "fs";
+
+let mcpClient: MultiServerMCPClient | null = null;
+
+async function getMcpTools(): Promise<StructuredTool[]> {
+  // 已有连接则复用
+  if (mcpClient) {
+    return await mcpClient.getTools();
+  }
+
+  try {
+    // 从配置文件或环境变量读取 MCP 服务器配置
+    let mcpServers: Record<string, any> = {};
+
+    try {
+      const raw = readFileSync(config.mcp.configPath, "utf-8");
+      mcpServers = JSON.parse(raw).mcpServers || {};
+    } catch {
+      // 配置文件不存在，跳过
+    }
+
+    if (Object.keys(mcpServers).length === 0) return [];
+
+    mcpClient = new MultiServerMCPClient({
+      mcpServers,
+      throwOnLoadError: false,
+      onConnectionError: "ignore",
+      prefixToolNameWithServerName: true,
+      useStandardContentBlocks: true,
+    });
+
+    return await mcpClient.getTools();
+  } catch (error) {
+    console.error("Failed to load MCP tools:", error);
+    return [];
+  }
+}
 
 // ============================================================
 // 统一导出
@@ -67,8 +73,8 @@ export async function getAllTools(): Promise<StructuredTool[]> {
   const tools = [...localTools];
 
   // MCP 工具加载（启用时取消注释）
-  // const mcpTools = await getMcpTools();
-  // tools.push(...mcpTools);
+  const mcpTools = await getMcpTools();
+  tools.push(...mcpTools);
 
   return tools;
 }
@@ -77,8 +83,8 @@ export async function getAllTools(): Promise<StructuredTool[]> {
  * 关闭 MCP 连接（应用退出时调用）
  */
 export async function closeMcpConnections(): Promise<void> {
-  // if (mcpClient) {
-  //   await mcpClient.close();
-  //   mcpClient = null;
-  // }
+  if (mcpClient) {
+    await mcpClient.close();
+    mcpClient = null;
+  }
 }

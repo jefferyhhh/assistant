@@ -22,11 +22,12 @@ export interface ThreadInfo {
 
 /** MCP Server 配置（用于 mcp-servers.json） */
 export interface McpServerConfig {
-  transport: "stdio" | "sse" | "http";
+  transport?: "stdio" | "sse" | "http";
   command?: string;
   args?: string[];
   url?: string;
   env?: Record<string, string>;
+  headers?: Record<string, string>;
 }
 
 /** MCP 配置文件结构 */
