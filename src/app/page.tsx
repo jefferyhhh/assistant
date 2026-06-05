@@ -6,7 +6,13 @@ import { Sender } from "@ant-design/x";
 import { Conversations } from "@ant-design/x";
 import { Welcome } from "@ant-design/x";
 import { Button, Spin, message as antdMessage } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  SunOutlined,
+  MoonOutlined,
+} from "@ant-design/icons";
+import { useTheme } from "./theme-context";
 
 // ============================================================
 // 数据类型
@@ -30,6 +36,7 @@ export default function ChatPage() {
   const [threadsLoading, setThreadsLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bubbleListRef = useRef<any>(null);
+  const { theme, toggleTheme } = useTheme();
 
   // ----------------------------------------------------------
   // 会话列表
@@ -213,38 +220,31 @@ export default function ChatPage() {
   // ----------------------------------------------------------
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       {/* 侧边栏 */}
-      <div
-        style={{
-          width: 260,
-          borderRight: "1px solid rgba(0,0,0,0.06)",
-          display: "flex",
-          flexDirection: "column",
-          background: "rgba(0,0,0,0.02)",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 12px 8px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.65 }}>
+      <div className="flex w-[260px] flex-col border-r border-border bg-surface">
+        <div className="flex items-center justify-between px-3 pt-4 pb-2">
+          <span className="text-sm font-semibold text-muted">
             会话列表
           </span>
-          <Button
-            type="text"
-            size="small"
-            icon={<PlusOutlined />}
-            onClick={createNewChat}
-          >
-            新对话
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              type="text"
+              size="small"
+              icon={theme === "dark" ? <SunOutlined /> : <MoonOutlined />}
+              onClick={toggleTheme}
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={createNewChat}
+            >
+              新对话
+            </Button>
+          </div>
         </div>
-        <div style={{ flex: 1, overflow: "auto", padding: "0 4px" }}>
+        <div className="flex-1 overflow-auto px-1">
           <Spin spinning={threadsLoading}>
             <Conversations
               items={threads}
@@ -268,25 +268,11 @@ export default function ChatPage() {
       </div>
 
       {/* 主区域 */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
+      <div className="flex flex-1 flex-col overflow-hidden bg-background">
         {/* 消息区 */}
-        <div style={{ flex: 1, overflow: "auto", padding: "16px 24px" }}>
+        <div className="flex-1 overflow-auto px-6 py-4">
           {messages.length === 0 ? (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-              }}
-            >
+            <div className="flex h-full items-center justify-center">
               <Welcome
                 icon="🤖"
                 title="AI Assistant"
@@ -299,7 +285,7 @@ export default function ChatPage() {
               ref={bubbleListRef}
               items={messages}
               autoScroll
-              style={{ maxWidth: 800, margin: "0 auto" }}
+              className="mx-auto max-w-[800px]"
               role={{
                 user: {
                   placement: "end",
@@ -316,14 +302,7 @@ export default function ChatPage() {
         </div>
 
         {/* 输入区 */}
-        <div
-          style={{
-            padding: "12px 24px 16px",
-            maxWidth: 800,
-            width: "100%",
-            margin: "0 auto",
-          }}
-        >
+        <div className="mx-auto w-full max-w-[800px] px-6 pt-3 pb-4">
           <Sender
             value={input}
             onChange={setInput}

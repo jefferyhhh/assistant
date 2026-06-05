@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: "Next.js + LangGraph + LangChain.js + MongoDB 智能助手",
 };
 
+// 阻塞脚本：在 React 水合前读取 localStorage / 系统偏好，设置 <html> class
+const themeInitScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.classList.add(t);return}if(window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.classList.add('dark')}else{document.documentElement.classList.add('light')}}catch(e){}})()`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,8 +29,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>
