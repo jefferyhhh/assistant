@@ -6,6 +6,7 @@ import { Sender } from "@ant-design/x";
 import { Conversations } from "@ant-design/x";
 import { Welcome } from "@ant-design/x";
 import { Button, Spin, message as antdMessage } from "antd";
+import { XMarkdown } from "@ant-design/x-markdown";
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -289,12 +290,16 @@ export default function ChatPage() {
               role={{
                 user: {
                   placement: "end",
-                  variant: "shadow",
+                  variant: "filled",
+                  styles:{
+                    content: { background: 'color-mix(in srgb, #3b82f6 12%, transparent)' },
+                  },
                 },
                 ai: {
                   placement: "start",
-                  variant: "borderless",
+                  variant: "filled",
                   typing: { effect: "typing", step: 3, interval: 50 },
+                  contentRender: (content) => <XMarkdown>{content}</XMarkdown>,
                 },
               }}
             />
