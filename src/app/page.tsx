@@ -38,6 +38,8 @@ export default function ChatPage() {
   const abortRef = useRef<AbortController | null>(null);
   const bubbleListRef = useRef<any>(null);
   const { theme, toggleTheme } = useTheme();
+  //ai回答loading
+  const [aiLoading, setAiLoading] = useState(false);
 
   // ----------------------------------------------------------
   // 会话列表
@@ -109,6 +111,7 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setInput("");
       setIsLoading(true);
+      setAiLoading(true);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -143,6 +146,7 @@ export default function ChatPage() {
 
               if (data.type === "content") {
                 assistantContent += data.content;
+                setAiLoading(false);
                 setMessages((prev) => {
                   const updated = [...prev];
                   const last = updated[updated.length - 1];
@@ -181,6 +185,7 @@ export default function ChatPage() {
         });
       } finally {
         setIsLoading(false);
+        setAiLoading(false);
         abortRef.current = null;
       }
     },
@@ -297,6 +302,7 @@ export default function ChatPage() {
                 },
                 ai: {
                   placement: "start",
+                  loading:aiLoading,
                   variant: "filled",
                   typing: { effect: "typing", step: 3, interval: 50 },
                   contentRender: (content) => <XMarkdown>{content}</XMarkdown>,
