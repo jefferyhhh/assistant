@@ -4,13 +4,13 @@
 
 ## 技术栈
 
-| 组件 | 技术 | 用途 |
-|---|---|---|
-| 前端 + API | Next.js 16 (App Router) | 聊天 UI + REST API |
-| Agent 编排 | LangGraph.js | ReAct agent，支持工具调用循环 |
-| LLM 调用 | LangChain.js + OpenAI | 模型抽象层 |
-| 状态持久化 | MongoDB + LangGraph Checkpointer | 对话历史 + 线程管理 |
-| 工具协议 | MCP (Model Context Protocol) | 动态工具发现与调用 |
+| 组件       | 技术                             | 用途                          |
+| ---------- | -------------------------------- | ----------------------------- |
+| 前端 + API | Next.js 16 (App Router)          | 聊天 UI + REST API            |
+| Agent 编排 | LangGraph.js                     | ReAct agent，支持工具调用循环 |
+| LLM 调用   | LangChain.js + OpenAI            | 模型抽象层                    |
+| 状态持久化 | MongoDB + LangGraph Checkpointer | 对话历史 + 线程管理           |
+| 工具协议   | MCP (Model Context Protocol)     | 动态工具发现与调用            |
 
 ## 快速开始
 
@@ -49,21 +49,30 @@ npm run dev
 ```
 src/
 ├── app/
-│   ├── layout.tsx              # 根布局
-│   ├── page.tsx                # 聊天 UI
-│   ├── globals.css             # 全局样式
-│   └── api/
-│       ├── chat/route.ts       # POST /api/chat — 流式对话
-│       └── threads/route.ts    # GET/POST/DELETE /api/threads — 线程管理
+│   ├── api/
+│   │   ├── chat/route.ts        # POST 流式/非流式对话
+│   │   ├── messages/route.ts    # GET  获取会话历史消息
+│   │   └── threads/route.ts     # GET/POST/DELETE 会话管理
+│   ├── layout.tsx               # 根布局（SSR 主题注入）
+│   ├── page.tsx                 # 首页（组件编排层）
+│   ├── providers.tsx            # Provider 组合（ThemeProvider + XProvider）
+│   ├── theme-context.tsx        # 主题 Context + useTheme hook
+│   └── globals.css              # 全局样式 + CSS 变量
+├── components/
+│   ├── Sidebar.tsx              # 侧边栏（会话列表 + 主题切换）
+│   ├── MessageArea.tsx          # 消息展示（Bubble.List / Welcome）
+│   └── ChatInput.tsx            # 输入区（Sender）
+├── hooks/
+│   └── useChat.ts               # 聊天核心逻辑 hook
 ├── lib/
-│   ├── config.ts               # 环境变量集中管理
-│   ├── mongodb.ts              # MongoDB 客户端单例
-│   ├── agent.ts                # LangGraph ReAct Agent 工厂
+│   ├── agent.ts                 # LangGraph Agent 工厂 + 消息读取
+│   ├── config.ts                # 环境变量集中管理
+│   ├── mongodb.ts               # MongoDB 连接单例
 │   └── tools/
-│       ├── index.ts            # 工具注册表（本地 + MCP）
-│       └── example-tool.ts     # 示例工具（时间、计算器）
+│       ├── index.ts             # 工具注册表（本地 + MCP）
+│       └── example-tool.ts      # 示例工具（时间、计算器）
 └── types/
-    └── index.ts                # 共享类型定义
+    └── index.ts                 # 共享类型定义
 ```
 
 ## 添加自定义工具
@@ -113,7 +122,6 @@ const localTools: Tool[] = [getCurrentTimeTool, calculatorTool, myTool];
 ```
 
 2. 在 `src/lib/tools/index.ts` 中取消 MCP 注释代码的注释。
-
 3. Agent 将自动发现并使用所有 MCP 工具。
 
 ## API 接口
