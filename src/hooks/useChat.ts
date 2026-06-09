@@ -11,6 +11,7 @@ import { message as antdMessage } from "antd";
 export interface ThreadItem {
   key: string;
   label: string;
+  title?: string;
 }
 
 // ============================================================
@@ -38,9 +39,10 @@ export function useChat() {
       const res = await fetch("/api/threads");
       const data = await res.json();
       const items: ThreadItem[] = (data.threads || []).map(
-        (t: { threadId: string }) => ({
+        (t: { threadId: string; title?: string | null }) => ({
           key: t.threadId,
-          label: `会话 ${t.threadId.slice(0, 8)}...`,
+          label: t.title || `会话 ${t.threadId.slice(0, 8)}...`,
+          title: t.title ?? undefined,
         })
       );
       setThreads(items);
@@ -123,6 +125,8 @@ export function useChat() {
 
       const controller = new AbortController();
       abortRef.current = controller;
+      const isNewThread = !threadId;
+      let newThreadId: string | null = null;
 
       try {
         const res = await fetch("/api/chat", {
@@ -168,6 +172,7 @@ export function useChat() {
               }
 
               if (data.type === "done" && data.threadId) {
+                newThreadId = data.threadId;
                 setThreadId(data.threadId);
                 loadThreads();
               }
@@ -195,6 +200,17 @@ export function useChat() {
         setIsLoading(false);
         setAiLoading(false);
         abortRef.current = null;
+
+        // 新会话生成标题（非阻塞）
+        if (isNewThread && newThreadId) {
+          fetch("/api/threads/title", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ threadId: newThreadId }),
+          })
+            .then(() => loadThreads())
+            .catch(() => {});
+        }
       }
     },
     [isLoading, threadId, loadThreads]

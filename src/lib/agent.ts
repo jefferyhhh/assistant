@@ -10,6 +10,7 @@ import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
 import { config } from "./config";
 import { ensureMongoConnected } from "./mongodb";
 import { getAllTools } from "./tools";
+import type { BaseMessage } from "@langchain/core/messages";
 
 let checkpointer: MongoDBSaver | null = null;
 
@@ -95,4 +96,58 @@ export async function getThreadMessages(threadId: string) {
     const role = type === "human" ? "user" : type === "ai" ? "ai" : null;
     return role ? { role, content } : null;
   }).filter(Boolean);
+}
+
+/**
+ * 从 checkpoint 中提取第一条用户消息
+ */
+async function getFirstUserMessage(threadId: string): Promise<string | null> {
+  const saver = await getCheckpointer();
+  const tuple = await saver.getTuple(getThreadConfig(threadId));
+
+  if (!tuple?.checkpoint?.channel_values?.messages) return null;
+
+  const messages = tuple.checkpoint.channel_values.messages as BaseMessage[];
+
+  for (const msg of messages) {
+    if (msg._getType() === "human") {
+      const content =
+        typeof msg.content === "string"
+          ? msg.content
+          : Array.isArray(msg.content)
+            ? msg.content
+                .filter((b: any) => b.type === "text")
+                .map((b: any) => b.text)
+                .join("")
+            : String(msg.content);
+      return content || null;
+    }
+  }
+  return null;
+}
+
+/**
+ * 调用 LLM 为会话生成简短标题
+ */
+export async function generateThreadTitle(threadId: string): Promise<string | null> {
+  const firstMsg = await getFirstUserMessage(threadId);
+  if (!firstMsg) return null;
+
+  const llm = new ChatOpenAI({
+    model: config.openai.model,
+    apiKey: config.openai.apiKey,
+    ...(config.openai.baseUrl && { configuration: { baseURL: config.openai.baseUrl } }),
+    temperature: 0.3,
+  });
+
+  const res = await llm.invoke(
+    `为以下对话生成一个 10 字以内的中文标题，只返回标题文本，不要引号或标点。\n用户：${firstMsg.slice(0, 200)}`
+  );
+
+  const title =
+    typeof res.content === "string"
+      ? res.content.trim()
+      : String(res.content).trim();
+
+  return title.slice(0, 30) || null;
 }

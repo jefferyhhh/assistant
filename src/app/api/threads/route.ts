@@ -12,7 +12,7 @@ import { randomUUID } from "crypto";
 
 /**
  * GET /api/threads — 列出线程
- * 从 MongoDB checkpoints 集合中查询去重的 thread_id
+ * 从 MongoDB checkpoints 集合中查询去重的 thread_id，关联 thread_metadata 获取标题
  */
 export async function GET() {
   try {
@@ -23,12 +23,24 @@ export async function GET() {
     const threads = await collection
       .aggregate([
         { $group: { _id: "$thread_id" } },
+        {
+          $lookup: {
+            from: "thread_metadata",
+            localField: "_id",
+            foreignField: "thread_id",
+            as: "metadata",
+          },
+        },
+        { $unwind: { path: "$metadata", preserveNullAndEmptyArrays: true } },
         { $sort: { _id: 1 } },
       ])
       .toArray();
 
     return Response.json({
-      threads: threads.map((t) => ({ threadId: t._id })),
+      threads: threads.map((t) => ({
+        threadId: t._id,
+        title: t.metadata?.title ?? null,
+      })),
     });
   } catch (error) {
     console.error("List threads error:", error);
