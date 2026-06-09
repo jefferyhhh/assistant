@@ -62,3 +62,37 @@ export async function createAgent(threadId?: string) {
 export function getThreadConfig(threadId: string) {
   return { configurable: { thread_id: threadId } };
 }
+
+/**
+ * 获取指定会话的历史消息
+ * 从 MongoDB checkpoint 中读取最新的 channel_values.messages
+ */
+export async function getThreadMessages(threadId: string) {
+  const saver = await getCheckpointer();
+  const tuple = await saver.getTuple(getThreadConfig(threadId));
+
+  if (!tuple?.checkpoint?.channel_values?.messages) {
+    return [];
+  }
+
+  const messages = tuple.checkpoint.channel_values.messages as Array<{
+    _getType: () => string;
+    content: string | Array<{ type: string; text: string }>;
+  }>;
+
+  return messages.map((msg) => {
+    const type = msg._getType();
+    // content 可能是 string 或 content block 数组
+    const content =
+      typeof msg.content === "string"
+        ? msg.content
+        : msg.content
+            .filter((block) => block.type === "text")
+            .map((block) => block.text)
+            .join("");
+
+    // human -> user, ai -> ai, 其它跳过
+    const role = type === "human" ? "user" : type === "ai" ? "ai" : null;
+    return role ? { role, content } : null;
+  }).filter(Boolean);
+}

@@ -59,10 +59,31 @@ export function useChat() {
   // 切换会话
   // ----------------------------------------------------------
 
-  const switchThread = useCallback((key: string) => {
+  const switchThread = useCallback(async (key: string) => {
     setThreadId(key);
     setMessages([]);
-    // TODO: 后续可通过 API 加载历史消息
+    setAiLoading(true);
+
+    try {
+      const res = await fetch(`/api/messages?threadId=${key}`);
+      const data = await res.json();
+
+      if (data.messages?.length) {
+        const loaded: BubbleItemType[] = data.messages.map(
+          (msg: { role: string; content: string }, i: number) => ({
+            key: `${msg.role}-${key}-${i}`,
+            role: msg.role,
+            content: msg.content,
+            status: "success",
+          })
+        );
+        setMessages(loaded);
+      }
+    } catch {
+      // 忽略加载错误
+    } finally {
+      setAiLoading(false);
+    }
   }, []);
 
   // ----------------------------------------------------------
