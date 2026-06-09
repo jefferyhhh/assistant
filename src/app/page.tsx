@@ -300,13 +300,15 @@ export default function ChatPage() {
                     content: { background: 'color-mix(in srgb, #3b82f6 12%, transparent)' },
                   },
                 },
-                ai: {
+                ai: (item) => ({
                   placement: "start",
-                  loading:aiLoading,
+                  loading:
+                    aiLoading &&
+                    item.key === messages[messages.length - 1]?.key,
                   variant: "filled",
                   typing: { effect: "typing", step: 3, interval: 50 },
                   contentRender: (content) => <XMarkdown>{content}</XMarkdown>,
-                },
+                }),
               }}
             />
           )}
