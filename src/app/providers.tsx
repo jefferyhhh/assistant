@@ -1,7 +1,7 @@
 "use client";
 
 import { XProvider } from "@ant-design/x";
-import { theme as antdTheme } from "antd";
+import { App, theme as antdTheme } from "antd";
 import { StyleProvider, extractStyle, createCache } from "@ant-design/cssinjs";
 import { useServerInsertedHTML } from "next/navigation";
 import { useRef } from "react";
@@ -33,7 +33,7 @@ function AntdStyleInjector({ children }: { children: React.ReactNode }) {
               : antdTheme.defaultAlgorithm,
         }}
       >
-        {children}
+        <App>{children}</App>
       </XProvider>
     </StyleProvider>
   );
