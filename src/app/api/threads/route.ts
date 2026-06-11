@@ -22,7 +22,14 @@ export async function GET() {
 
     const threads = await collection
       .aggregate([
-        { $group: { _id: "$thread_id" } },
+        // 按 thread_id 分组，取每个线程最新的 checkpoint 时间戳
+        {
+          $group: {
+            _id: "$thread_id",
+            updatedAt: { $max: "$upserted_at" },
+          },
+        },
+        // 关联 thread_metadata 获取标题
         {
           $lookup: {
             from: "thread_metadata",
@@ -32,7 +39,8 @@ export async function GET() {
           },
         },
         { $unwind: { path: "$metadata", preserveNullAndEmptyArrays: true } },
-        { $sort: { _id: 1 } },
+        // 按最新活动时间降序排列（新到旧）
+        { $sort: { updatedAt: -1 } },
       ])
       .toArray();
 
