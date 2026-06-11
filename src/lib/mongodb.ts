@@ -31,6 +31,7 @@ export async function ensureMongoConnected(): Promise<MongoClient> {
   try {
     await client.db(config.mongodb.dbName).command({ ping: 1 });
   } catch {
+    console.warn("MongoDB ping 失败，尝试重新连接");
     await client.connect();
   }
   return client;

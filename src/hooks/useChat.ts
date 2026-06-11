@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { BubbleItemType } from "@ant-design/x";
-import { message as antdMessage } from "antd";
+import { useMessage } from "./useMessage";
 
 // ============================================================
 // 数据类型
@@ -19,6 +19,7 @@ export interface ThreadItem {
 // ============================================================
 
 export function useChat() {
+  const message = useMessage();
   const [messages, setMessages] = useState<BubbleItemType[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +38,7 @@ export function useChat() {
     setThreadsLoading(true);
     try {
       const res = await fetch("/api/threads");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const items: ThreadItem[] = (data.threads || []).map(
         (t: { threadId: string; title?: string | null }) => ({
@@ -47,7 +49,7 @@ export function useChat() {
       );
       setThreads(items);
     } catch {
-      // 忽略
+      message.error("加载会话列表失败");
     } finally {
       setThreadsLoading(false);
     }
@@ -68,6 +70,7 @@ export function useChat() {
 
     try {
       const res = await fetch(`/api/messages?threadId=${key}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (data.messages?.length) {
@@ -82,7 +85,7 @@ export function useChat() {
         setMessages(loaded);
       }
     } catch {
-      // 忽略加载错误
+      message.error("加载会话历史失败");
     } finally {
       setAiLoading(false);
     }
@@ -153,35 +156,37 @@ export function useChat() {
 
           for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
+            let data: { type?: string; content?: string; threadId?: string; error?: string };
             try {
-              const data = JSON.parse(line.slice(6));
-
-              if (data.type === "content") {
-                assistantContent += data.content;
-                setAiLoading(false);
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  updated[updated.length - 1] = {
-                    ...last,
-                    content: assistantContent,
-                    status: "success",
-                  };
-                  return updated;
-                });
-              }
-
-              if (data.type === "done" && data.threadId) {
-                newThreadId = data.threadId;
-                setThreadId(data.threadId);
-                loadThreads();
-              }
-
-              if (data.type === "error") {
-                throw new Error(data.error);
-              }
+              data = JSON.parse(line.slice(6));
             } catch {
-              // 忽略解析错误
+              // SSE chunk 可能是不完整的 JSON，静默跳过
+              continue;
+            }
+
+            if (data.type === "content") {
+              assistantContent += data.content!;
+              setAiLoading(false);
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                updated[updated.length - 1] = {
+                  ...last,
+                  content: assistantContent,
+                  status: "success",
+                };
+                return updated;
+              });
+            }
+
+            if (data.type === "done" && data.threadId) {
+              newThreadId = data.threadId;
+              setThreadId(data.threadId);
+              loadThreads();
+            }
+
+            if (data.type === "error") {
+              throw new Error(data.error);
             }
           }
         }
@@ -208,8 +213,11 @@ export function useChat() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ threadId: newThreadId }),
           })
-            .then(() => loadThreads())
-            .catch(() => {});
+            .then((res) => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return loadThreads();
+            })
+            .catch(() => message.warning("会话标题生成失败"));
         }
       }
     },
@@ -232,14 +240,15 @@ export function useChat() {
   const deleteThread = useCallback(
     async (key: string) => {
       try {
-        await fetch(`/api/threads?id=${key}`, { method: "DELETE" });
+        const res = await fetch(`/api/threads?id=${key}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         if (key === threadId) {
           setThreadId(null);
           setMessages([]);
         }
         loadThreads();
       } catch {
-        antdMessage.error("删除会话失败");
+        message.error("删除会话失败");
       }
     },
     [threadId, loadThreads]

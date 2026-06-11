@@ -40,8 +40,11 @@ async function getMcpTools(): Promise<StructuredTool[]> {
     try {
       const raw = readFileSync(config.mcp.configPath, "utf-8");
       mcpServers = JSON.parse(raw).mcpServers || {};
-    } catch {
-      // 配置文件不存在，跳过
+    } catch (error) {
+      // 文件不存在是正常情况（ENOENT），其它错误需要记录
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.error("MCP 配置文件解析失败:", error);
+      }
     }
 
     if (Object.keys(mcpServers).length === 0) return [];

@@ -3,6 +3,11 @@
  * 所有配置项在此处统一读取和验证
  */
 
+// 关键环境变量校验
+if (typeof window === "undefined" && !process.env.OPENAI_API_KEY) {
+  console.warn("⚠️ OPENAI_API_KEY 未设置，聊天功能将无法使用");
+}
+
 export const config = {
   // MongoDB
   mongodb: {

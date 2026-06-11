@@ -64,8 +64,16 @@ export async function GET() {
  * 返回一个新的 thread_id
  */
 export async function POST() {
-  const threadId = randomUUID();
-  return Response.json({ threadId });
+  try {
+    const threadId = randomUUID();
+    return Response.json({ threadId });
+  } catch (error) {
+    console.error("Create thread error:", error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : "服务器内部错误" },
+      { status: 500 }
+    );
+  }
 }
 
 /**
