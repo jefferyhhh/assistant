@@ -3,20 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { BubbleItemType } from "@ant-design/x";
 import { useMessage } from "./useMessage";
+import * as threadsApi from "@/lib/api/threads";
+import * as messagesApi from "@/lib/api/messages";
+import * as chatApi from "@/lib/api/chat";
+import type { ThreadItem } from "@/lib/api/threads";
 
-// ============================================================
-// 数据类型
-// ============================================================
-
-export interface ThreadItem {
-  key: string;
-  label: string;
-  title?: string;
-}
-
-// ============================================================
-// 聊天核心逻辑 Hook
-// ============================================================
+// Re-export 给外部使用（如 Sidebar）
+export type { ThreadItem };
 
 export function useChat() {
   const message = useMessage();
@@ -37,16 +30,7 @@ export function useChat() {
   const loadThreads = useCallback(async () => {
     setThreadsLoading(true);
     try {
-      const res = await fetch("/api/threads");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const items: ThreadItem[] = (data.threads || []).map(
-        (t: { threadId: string; title?: string | null }) => ({
-          key: t.threadId,
-          label: t.title || `会话 ${t.threadId.slice(0, 8)}...`,
-          title: t.title ?? undefined,
-        })
-      );
+      const items = await threadsApi.loadThreads();
       setThreads(items);
     } catch {
       message.error("加载会话列表失败");
@@ -69,19 +53,14 @@ export function useChat() {
     setAiLoading(true);
 
     try {
-      const res = await fetch(`/api/messages?threadId=${key}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      if (data.messages?.length) {
-        const loaded: BubbleItemType[] = data.messages.map(
-          (msg: { role: string; content: string }, i: number) => ({
-            key: `${msg.role}-${key}-${i}`,
-            role: msg.role,
-            content: msg.content,
-            status: "success",
-          })
-        );
+      const history = await messagesApi.loadMessages(key);
+      if (history.length) {
+        const loaded: BubbleItemType[] = history.map((msg, i) => ({
+          key: `${msg.role}-${key}-${i}`,
+          role: msg.role,
+          content: msg.content,
+          status: "success",
+        }));
         setMessages(loaded);
       }
     } catch {
@@ -132,62 +111,31 @@ export function useChat() {
       let newThreadId: string | null = null;
 
       try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, threadId, stream: true }),
-          signal: controller.signal,
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
         let assistantContent = "";
 
-        if (!reader) throw new Error("无法读取响应流");
+        for await (const event of chatApi.sendMessage(text, threadId, controller.signal)) {
+          if (event.type === "content") {
+            assistantContent += event.content!;
+            setAiLoading(false);
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                content: assistantContent,
+                status: "success",
+              };
+              return updated;
+            });
+          }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          if (event.type === "done" && event.threadId) {
+            newThreadId = event.threadId;
+            setThreadId(event.threadId);
+            loadThreads();
+          }
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            let data: { type?: string; content?: string; threadId?: string; error?: string };
-            try {
-              data = JSON.parse(line.slice(6));
-            } catch {
-              // SSE chunk 可能是不完整的 JSON，静默跳过
-              continue;
-            }
-
-            if (data.type === "content") {
-              assistantContent += data.content!;
-              setAiLoading(false);
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                updated[updated.length - 1] = {
-                  ...last,
-                  content: assistantContent,
-                  status: "success",
-                };
-                return updated;
-              });
-            }
-
-            if (data.type === "done" && data.threadId) {
-              newThreadId = data.threadId;
-              setThreadId(data.threadId);
-              loadThreads();
-            }
-
-            if (data.type === "error") {
-              throw new Error(data.error);
-            }
+          if (event.type === "error") {
+            throw new Error(event.error);
           }
         }
       } catch (error) {
@@ -208,20 +156,14 @@ export function useChat() {
 
         // 新会话生成标题（非阻塞）
         if (isNewThread && newThreadId) {
-          fetch("/api/threads/title", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ threadId: newThreadId }),
-          })
-            .then((res) => {
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              return loadThreads();
-            })
+          threadsApi
+            .generateThreadTitle(newThreadId)
+            .then(() => loadThreads())
             .catch(() => message.warning("会话标题生成失败"));
         }
       }
     },
-    [isLoading, threadId, loadThreads]
+    [isLoading, threadId, loadThreads],
   );
 
   // ----------------------------------------------------------
@@ -240,8 +182,7 @@ export function useChat() {
   const deleteThread = useCallback(
     async (key: string) => {
       try {
-        const res = await fetch(`/api/threads?id=${key}`, { method: "DELETE" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await threadsApi.deleteThread(key);
         if (key === threadId) {
           setThreadId(null);
           setMessages([]);
@@ -251,7 +192,7 @@ export function useChat() {
         message.error("删除会话失败");
       }
     },
-    [threadId, loadThreads]
+    [threadId, loadThreads],
   );
 
   return {

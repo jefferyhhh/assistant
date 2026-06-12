@@ -9,7 +9,7 @@ import {
   MoonOutlined,
 } from "@ant-design/icons";
 import { useTheme } from "@/app/theme-context";
-import type { ThreadItem } from "@/hooks/useChat";
+import type { ThreadItem } from "@/lib/api/threads";
 
 // ============================================================
 // 侧边栏组件
