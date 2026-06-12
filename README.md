@@ -63,8 +63,13 @@ src/
 │   ├── MessageArea.tsx          # 消息展示（Bubble.List / Welcome）
 │   └── ChatInput.tsx            # 输入区（Sender）
 ├── hooks/
-│   └── useChat.ts               # 聊天核心逻辑 hook
+│   └── useChat.ts               # 聊天状态管理（组合 api 模块）
 ├── lib/
+│   ├── api/
+│   │   ├── client.ts            # 统一 fetch 封装 + ApiError
+│   │   ├── chat.ts              # SSE 流式对话 → AsyncGenerator
+│   │   ├── messages.ts          # 会话历史消息
+│   │   └── threads.ts           # 会话 CRUD
 │   ├── agent.ts                 # LangGraph Agent 工厂 + 消息读取
 │   ├── config.ts                # 环境变量集中管理
 │   ├── mongodb.ts               # MongoDB 连接单例
