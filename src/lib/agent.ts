@@ -1,10 +1,10 @@
 /**
  * LangGraph Agent 工厂
- * 使用 createReactAgent 创建带工具调用能力的 ReAct Agent
+ * 使用 createAgent 创建带工具调用能力的 ReAct Agent
  * 通过 MongoDBSaver 实现对话状态持久化
  */
 
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent as createLangchainAgent } from "langchain";
 import { ChatOpenAI } from "@langchain/openai";
 import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
 import { config } from "./config";
@@ -47,10 +47,10 @@ export async function createAgent(threadId?: string) {
 
   const saver = await getCheckpointer();
 
-  const agent = createReactAgent({
-    llm,
+  const agent = createLangchainAgent({
+    model: llm,
     tools,
-    prompt: config.agent.systemPrompt,
+    systemPrompt: config.agent.systemPrompt,
     checkpointer: saver,
   });
 
@@ -77,12 +77,12 @@ export async function getThreadMessages(threadId: string) {
   }
 
   const messages = tuple.checkpoint.channel_values.messages as Array<{
-    _getType: () => string;
+    type: string;
     content: string | Array<{ type: string; text: string }>;
   }>;
 
   return messages.map((msg) => {
-    const type = msg._getType();
+    const type = msg.type;
     // content 可能是 string 或 content block 数组
     const content =
       typeof msg.content === "string"
@@ -110,7 +110,7 @@ async function getFirstUserMessage(threadId: string): Promise<string | null> {
   const messages = tuple.checkpoint.channel_values.messages as BaseMessage[];
 
   for (const msg of messages) {
-    if (msg._getType() === "human") {
+    if (msg.type === "human") {
       const content =
         typeof msg.content === "string"
           ? msg.content
