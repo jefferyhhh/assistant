@@ -2,6 +2,7 @@
 
 import { Bubble, type BubbleItemType, Welcome } from "@ant-design/x";
 import { XMarkdown } from "@ant-design/x-markdown";
+import { CodeHighlight } from "./CodeHighlight";
 
 // ============================================================
 // 消息展示区组件
@@ -52,7 +53,11 @@ export function MessageArea({
                 item.key === messages[messages.length - 1]?.key,
               variant: "filled",
               typing: { effect: "typing", step: 3, interval: 50 },
-              contentRender: (content) => <XMarkdown>{content}</XMarkdown>,
+              contentRender: (content) => (
+                <XMarkdown components={{ code: CodeHighlight }}>
+                  {content}
+                </XMarkdown>
+              ),
             }),
           }}
         />
