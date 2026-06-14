@@ -54,7 +54,7 @@ export function MessageArea({
               variant: "filled",
               typing: { effect: "typing", step: 3, interval: 50 },
               contentRender: (content) => (
-                <XMarkdown components={{ code: CodeHighlight }}>
+                <XMarkdown components={{ code: CodeHighlight }} openLinksInNewTab={true}>
                   {content}
                 </XMarkdown>
               ),
