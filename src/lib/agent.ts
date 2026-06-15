@@ -11,6 +11,7 @@ import { config } from "./config";
 import { ensureMongoConnected } from "./mongodb";
 import { getAllTools } from "./tools";
 import type { BaseMessage } from "@langchain/core/messages";
+import type { ToolCall, HistoryMessage } from "@/lib/api/messages";
 
 let checkpointer: MongoDBSaver | null = null;
 
@@ -67,8 +68,9 @@ export function getThreadConfig(threadId: string) {
 /**
  * 获取指定会话的历史消息
  * 从 MongoDB checkpoint 中读取最新的 channel_values.messages
+ * 同时提取工具调用信息
  */
-export async function getThreadMessages(threadId: string) {
+export async function getThreadMessages(threadId: string): Promise<HistoryMessage[]> {
   const saver = await getCheckpointer();
   const tuple = await saver.getTuple(getThreadConfig(threadId));
 
@@ -79,23 +81,77 @@ export async function getThreadMessages(threadId: string) {
   const messages = tuple.checkpoint.channel_values.messages as Array<{
     type: string;
     content: string | Array<{ type: string; text: string }>;
+    tool_calls?: Array<{ id?: string; name: string; args: Record<string, unknown> | string }>;
+    tool_call_id?: string;
+    status?: string;
   }>;
 
-  return messages.map((msg) => {
+  // 先收集所有 tool message 的结果，按 tool_call_id 索引
+  const toolResults = new Map<string, { content: string; status: string }>();
+  for (const msg of messages) {
+    if (msg.type === "tool" && msg.tool_call_id) {
+      const content =
+        typeof msg.content === "string"
+          ? msg.content
+          : Array.isArray(msg.content)
+            ? msg.content
+                .filter((b) => b.type === "text")
+                .map((b) => b.text)
+                .join("")
+            : String(msg.content);
+      toolResults.set(msg.tool_call_id, {
+        content: content.slice(0, 2000), // 截断过长结果
+        status: msg.status || "success",
+      });
+    }
+  }
+
+  const result: HistoryMessage[] = [];
+
+  for (const msg of messages) {
     const type = msg.type;
-    // content 可能是 string 或 content block 数组
     const content =
       typeof msg.content === "string"
         ? msg.content
-        : msg.content
-            .filter((block) => block.type === "text")
-            .map((block) => block.text)
-            .join("");
+        : Array.isArray(msg.content)
+          ? msg.content
+              .filter((block) => block.type === "text")
+              .map((block) => block.text)
+              .join("")
+          : String(msg.content);
 
-    // human -> user, ai -> ai, 其它跳过
-    const role = type === "human" ? "user" : type === "ai" ? "ai" : null;
-    return role ? { role, content } : null;
-  }).filter(Boolean);
+    if (type === "human") {
+      result.push({ role: "user", content });
+    } else if (type === "ai") {
+      const historyMsg: HistoryMessage = { role: "ai", content };
+
+      // 提取 AI 消息中的 tool_calls
+      if (msg.tool_calls && msg.tool_calls.length > 0) {
+        historyMsg.toolCalls = msg.tool_calls.map((tc) => {
+          const toolResult = tc.id ? toolResults.get(tc.id) : undefined;
+          const argsStr =
+            typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args ?? {});
+          return {
+            id: tc.id || `${tc.name}-${Math.random().toString(36).slice(2, 8)}`,
+            name: tc.name,
+            args: argsStr,
+            result: toolResult?.content,
+            status: toolResult
+              ? toolResult.status === "error" ? ("error" as const) : ("done" as const)
+              : ("done" as const),
+          } satisfies ToolCall;
+        });
+      }
+
+      // 只有当 AI 消息有文本内容或有工具调用时才加入结果
+      if (content || historyMsg.toolCalls) {
+        result.push(historyMsg);
+      }
+    }
+    // tool 和 system 类型跳过（已合并到 ai 消息的 toolCalls 中）
+  }
+
+  return result;
 }
 
 /**

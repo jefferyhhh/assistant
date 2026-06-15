@@ -48,6 +48,40 @@ export async function POST(req: NextRequest) {
                   controller.enqueue(encoder.encode(`data: ${data}\n\n`));
                 }
               }
+
+              // 工具开始
+              if (event.event === "on_tool_start") {
+                const data = JSON.stringify({
+                  type: "tool_start",
+                  toolCall: {
+                    id: event.run_id,
+                    name: event.name,
+                    args: typeof event.data?.input === "string"
+                      ? event.data.input
+                      : JSON.stringify(event.data?.input ?? {}),
+                    status: "running",
+                  },
+                  threadId,
+                });
+                controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+              }
+
+              // 工具结束
+              if (event.event === "on_tool_end") {
+                const data = JSON.stringify({
+                  type: "tool_end",
+                  toolCall: {
+                    id: event.run_id,
+                    name: event.name,
+                    result: typeof event.data?.output === "string"
+                      ? event.data.output
+                      : JSON.stringify(event.data?.output ?? ""),
+                    status: "done",
+                  },
+                  threadId,
+                });
+                controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+              }
             }
 
             // 发送结束标记

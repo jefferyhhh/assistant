@@ -4,12 +4,14 @@
  */
 
 import { requestStream } from "./client";
+import type { ToolCall } from "./messages";
 
 export interface SSEEvent {
-  type: "content" | "done" | "error";
+  type: "content" | "done" | "error" | "tool_start" | "tool_end";
   content?: string;
   threadId?: string;
   error?: string;
+  toolCall?: ToolCall;
 }
 
 /**

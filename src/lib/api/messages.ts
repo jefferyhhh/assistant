@@ -4,9 +4,18 @@
 
 import { request } from "./client";
 
+export interface ToolCall {
+  id: string;
+  name: string;
+  args?: string;
+  result?: string;
+  status: "running" | "done" | "error";
+}
+
 export interface HistoryMessage {
   role: string;
   content: string;
+  toolCalls?: ToolCall[];
 }
 
 /** 获取指定会话的历史消息 */

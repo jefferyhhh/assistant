@@ -7,6 +7,7 @@ import * as threadsApi from "@/lib/api/threads";
 import * as messagesApi from "@/lib/api/messages";
 import * as chatApi from "@/lib/api/chat";
 import type { ThreadItem } from "@/lib/api/threads";
+import type { ToolCall } from "@/lib/api/messages";
 
 // Re-export 给外部使用（如 Sidebar）
 export type { ThreadItem };
@@ -55,12 +56,28 @@ export function useChat() {
     try {
       const history = await messagesApi.loadMessages(key);
       if (history.length) {
-        const loaded: BubbleItemType[] = history.map((msg, i) => ({
-          key: `${msg.role}-${key}-${i}`,
-          role: msg.role,
-          content: msg.content,
-          status: "success",
-        }));
+        const loaded: BubbleItemType[] = [];
+        for (let i = 0; i < history.length; i++) {
+          const msg = history[i];
+
+          // 如果 AI 消息有工具调用，先插入一个工具调用 bubble
+          if (msg.role === "ai" && msg.toolCalls && msg.toolCalls.length > 0) {
+            loaded.push({
+              key: `tools-${key}-${i}`,
+              role: "ai",
+              content: "",
+              status: "success",
+              extraInfo: { toolCalls: msg.toolCalls },
+            });
+          }
+
+          loaded.push({
+            key: `${msg.role}-${key}-${i}`,
+            role: msg.role,
+            content: msg.content,
+            status: "success",
+          });
+        }
         setMessages(loaded);
       }
     } catch {
@@ -112,9 +129,15 @@ export function useChat() {
 
       try {
         let assistantContent = "";
+        const pendingToolCalls: ToolCall[] = [];
+        const toolBubbleKey = `tools-${Date.now()}`;
 
         for await (const event of chatApi.sendMessage(text, threadId, controller.signal)) {
           if (event.type === "content") {
+            // 第一次收到文本内容时，如果有工具调用则先确保工具 bubble 存在
+            if (assistantContent === "" && pendingToolCalls.length > 0) {
+              // 工具 bubble 已在 tool_start 时插入，此处无需操作
+            }
             assistantContent += event.content!;
             setAiLoading(false);
             setMessages((prev) => {
@@ -123,6 +146,54 @@ export function useChat() {
                 ...updated[updated.length - 1],
                 content: assistantContent,
                 status: "success",
+              };
+              return updated;
+            });
+          }
+
+          if (event.type === "tool_start" && event.toolCall) {
+            pendingToolCalls.push(event.toolCall);
+
+            setMessages((prev) => {
+              // 检查是否已存在工具 bubble
+              const existingIdx = prev.findIndex((m) => m.key === toolBubbleKey);
+              if (existingIdx >= 0) {
+                // 更新已有的工具 bubble
+                const updated = [...prev];
+                updated[existingIdx] = {
+                  ...updated[existingIdx],
+                  extraInfo: { toolCalls: [...pendingToolCalls] },
+                };
+                return updated;
+              }
+              // 首次工具调用，在最后一个 AI 消息之前插入
+              const updated = [...prev];
+              updated.splice(updated.length - 1, 0, {
+                key: toolBubbleKey,
+                role: "ai",
+                content: "",
+                extraInfo: { toolCalls: [...pendingToolCalls] },
+              });
+              return updated;
+            });
+          }
+
+          if (event.type === "tool_end" && event.toolCall) {
+            // 更新 pendingToolCalls 中对应项
+            const idx = pendingToolCalls.findIndex(
+              (tc) => tc.id === event.toolCall!.id,
+            );
+            if (idx >= 0) {
+              pendingToolCalls[idx] = event.toolCall;
+            }
+
+            setMessages((prev) => {
+              const existingIdx = prev.findIndex((m) => m.key === toolBubbleKey);
+              if (existingIdx < 0) return prev;
+              const updated = [...prev];
+              updated[existingIdx] = {
+                ...updated[existingIdx],
+                extraInfo: { toolCalls: [...pendingToolCalls] },
               };
               return updated;
             });
