@@ -71,6 +71,11 @@ export function useChat() {
             });
           }
 
+          // 跳过空内容的 AI 消息（仅有工具调用时，AI 的中间消息无文本）
+          if (msg.role === "ai" && !msg.content) {
+            continue;
+          }
+
           loaded.push({
             key: `${msg.role}-${key}-${i}`,
             role: msg.role,
