@@ -1,61 +1,29 @@
 /**
- * LangGraph Agent 工厂
- * 使用 createAgent 创建带工具调用能力的 ReAct Agent
- * 通过 MongoDBSaver 实现对话状态持久化
+ * LangGraph Agent 工厂（兼容层）
+ *
+ * 底层已迁移至 src/lib/agents/ 多 Agent 框架。
+ * 本文件保留 createAgent() 签名以保持向后兼容，
+ * 内部委托给 registry 默认 Agent（general）。
+ *
+ * 新代码建议直接使用：
+ *   import { createAgentFromRegistry } from "@/lib/agents"
  */
 
-import { createAgent as createLangchainAgent } from "langchain";
+import { createAgentFromRegistry } from "@/lib/agents/registry";
+import { getCheckpointer } from "@/lib/agents/base";
 import { ChatOpenAI } from "@langchain/openai";
-import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
 import { config } from "./config";
-import { ensureMongoConnected } from "./mongodb";
-import { getAllTools } from "./tools";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { ToolCall, HistoryMessage } from "@/lib/api/messages";
 
-let checkpointer: MongoDBSaver | null = null;
-
 /**
- * 获取或创建 MongoDB checkpointer 实例（单例）
- */
-async function getCheckpointer(): Promise<MongoDBSaver> {
-  if (!checkpointer) {
-    const client = await ensureMongoConnected();
-    checkpointer = new MongoDBSaver({
-      client,
-      dbName: config.mongodb.dbName,
-      enableTimestamps: true,
-    });
-  }
-  return checkpointer;
-}
-
-/**
- * 创建 Agent 实例
+ * 创建默认 Agent 实例（向后兼容）
  *
  * @param threadId - 对话线程 ID，用于多轮对话持久化
  * @returns 编译好的 LangGraph agent，可调用 .invoke() 或 .stream()
  */
 export async function createAgent(threadId?: string) {
-  const tools = await getAllTools();
-
-  const llm = new ChatOpenAI({
-    model: config.openai.model,
-    apiKey: config.openai.apiKey,
-    ...(config.openai.baseUrl && { configuration: { baseURL: config.openai.baseUrl } }),
-    temperature: 0.7,
-  });
-
-  const saver = await getCheckpointer();
-
-  const agent = createLangchainAgent({
-    model: llm,
-    tools,
-    systemPrompt: config.agent.systemPrompt,
-    checkpointer: saver,
-  });
-
-  return agent;
+  return createAgentFromRegistry("general", threadId);
 }
 
 /**
@@ -72,6 +40,7 @@ export function getThreadConfig(threadId: string) {
  */
 export async function getThreadMessages(threadId: string): Promise<HistoryMessage[]> {
   const saver = await getCheckpointer();
+  // getCheckpointer 现在来自 agents/base.ts，签名兼容
   const tuple = await saver.getTuple(getThreadConfig(threadId));
 
   if (!tuple?.checkpoint?.channel_values?.messages) {

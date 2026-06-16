@@ -8,21 +8,22 @@
 
 import { NextRequest } from "next/server";
 import { HumanMessage } from "@langchain/core/messages";
-import { createAgent, getThreadConfig } from "@/lib/agent";
+import { getThreadConfig } from "@/lib/agent";
+import { createAgentFromRegistry } from "@/lib/agents";
 import type { ChatRequest } from "@/types";
 import { randomUUID } from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
     const body: ChatRequest & { stream?: boolean } = await req.json();
-    const { message, threadId: inputThreadId, stream = true } = body;
+    const { message, threadId: inputThreadId, agentId, stream = true } = body;
 
     if (!message?.trim()) {
       return Response.json({ error: "消息不能为空" }, { status: 400 });
     }
 
     const threadId = inputThreadId || randomUUID();
-    const agent = await createAgent(threadId);
+    const agent = await createAgentFromRegistry(agentId, threadId);
     const config = getThreadConfig(threadId);
 
     if (stream) {

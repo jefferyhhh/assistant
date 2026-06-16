@@ -6,6 +6,8 @@
 export interface ChatRequest {
   message: string;
   threadId?: string;
+  /** Agent ID，可选，默认 "general"。可选值：general / coding / research */
+  agentId?: string;
 }
 
 /** 聊天 API 响应（非流式） */
