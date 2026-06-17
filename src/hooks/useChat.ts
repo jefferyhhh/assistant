@@ -71,8 +71,8 @@ export function useChat() {
             });
           }
 
-          // 跳过空内容的 AI 消息（仅有工具调用时，AI 的中间消息无文本）
-          if (msg.role === "ai" && !msg.content) {
+          // 跳过空内容或仅包含空白字符的 AI 消息（仅有工具调用时，AI 的中间消息无文本）
+          if (msg.role === "ai" && !msg.content?.trim()) {
             continue;
           }
 
