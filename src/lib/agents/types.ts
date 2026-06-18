@@ -21,4 +21,6 @@ export interface AgentDefinition {
   temperature?: number;
   /** 工具过滤器，从全部工具中筛选该 Agent 需要的工具 */
   toolFilter?: (allTools: StructuredTool[]) => StructuredTool[];
+  /** 单条消息最大字符数限制（默认 32000） */
+  maxMessageLength?: number;
 }

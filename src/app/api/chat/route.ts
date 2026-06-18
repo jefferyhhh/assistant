@@ -9,9 +9,11 @@
 import { NextRequest } from "next/server";
 import { HumanMessage } from "@langchain/core/messages";
 import { getThreadConfig } from "@/lib/agent";
-import { createAgentFromRegistry } from "@/lib/agents";
+import { createAgentFromRegistry, getAgentDefinition } from "@/lib/agents";
 import type { ChatRequest } from "@/types";
 import { randomUUID } from "crypto";
+
+const DEFAULT_MAX_MESSAGE_LENGTH = 32000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +22,16 @@ export async function POST(req: NextRequest) {
 
     if (!message?.trim()) {
       return Response.json({ error: "消息不能为空" }, { status: 400 });
+    }
+
+    const definition = getAgentDefinition(agentId || "general");
+    const maxLength = definition.maxMessageLength ?? DEFAULT_MAX_MESSAGE_LENGTH;
+
+    if (message.length > maxLength) {
+      return Response.json(
+        { error: `消息长度不能超过 ${maxLength} 个字符` },
+        { status: 400 }
+      );
     }
 
     const threadId = inputThreadId || randomUUID();
