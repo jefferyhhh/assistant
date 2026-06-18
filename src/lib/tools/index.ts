@@ -9,12 +9,12 @@
  */
 
 import type { StructuredTool } from "@langchain/core/tools";
-import { getCurrentTimeTool, calculatorTool } from "./example-tool";
+import { getCurrentTimeTool } from "./example-tool";
 
 // ============================================================
 // 本地工具 — 在此处注册你自定义的工具
 // ============================================================
-const localTools: StructuredTool[] = [getCurrentTimeTool, calculatorTool];
+const localTools: StructuredTool[] = [getCurrentTimeTool];
 
 // ============================================================
 // MCP 工具接入点（预留）

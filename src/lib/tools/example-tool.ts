@@ -26,26 +26,3 @@ export const getCurrentTimeTool = tool(
   }
 );
 
-/**
- * 示例：数学计算工具
- */
-export const calculatorTool = tool(
-  async ({ expression }: { expression: string }) => {
-    try {
-      // 简单安全的数学表达式求值
-      const sanitized = expression.replace(/[^0-9+\-*/().%\s]/g, "");
-      if (!sanitized) return "错误：无效的数学表达式";
-      const result = Function(`"use strict"; return (${sanitized})`)();
-      return `${expression} = ${result}`;
-    } catch (e) {
-      return `计算错误: ${e instanceof Error ? e.message : "未知错误"}`;
-    }
-  },
-  {
-    name: "calculator",
-    description: "计算数学表达式，支持加减乘除、括号等基本运算",
-    schema: z.object({
-      expression: z.string().describe("要计算的数学表达式，如 '2 + 3 * 4'"),
-    }),
-  }
-);
