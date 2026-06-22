@@ -35,6 +35,9 @@ export default function ChatPage() {
           onChange={chat.setInput}
           onSubmit={chat.sendMessage}
           onCancel={chat.cancelGeneration}
+          agentId={chat.agentId}
+          agents={chat.agents}
+          onAgentChange={chat.setAgentId}
         />
       </div>
     </div>

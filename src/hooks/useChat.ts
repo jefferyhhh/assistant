@@ -6,6 +6,8 @@ import { useMessage } from "./useMessage";
 import * as threadsApi from "@/lib/api/threads";
 import * as messagesApi from "@/lib/api/messages";
 import * as chatApi from "@/lib/api/chat";
+import * as agentsApi from "@/lib/api/agents";
+import type { AgentItem } from "@/lib/api/agents";
 import type { ThreadItem } from "@/lib/api/threads";
 import type { ToolCall } from "@/lib/api/messages";
 
@@ -21,6 +23,8 @@ export function useChat() {
   const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [agentId, setAgentId] = useState<string>("general");
+  const [agents, setAgents] = useState<AgentItem[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const bubbleListRef = useRef<any>(null);
 
@@ -43,6 +47,23 @@ export function useChat() {
   useEffect(() => {
     loadThreads();
   }, [loadThreads]);
+
+  // ----------------------------------------------------------
+  // Agent 列表
+  // ----------------------------------------------------------
+
+  const loadAgents = useCallback(async () => {
+    try {
+      const items = await agentsApi.loadAgents();
+      setAgents(items);
+    } catch {
+      // 静默失败，不影响主流程
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
 
   // ----------------------------------------------------------
   // 切换会话
@@ -137,7 +158,7 @@ export function useChat() {
         const pendingToolCalls: ToolCall[] = [];
         const toolBubbleKey = `tools-${Date.now()}`;
 
-        for await (const event of chatApi.sendMessage(text, threadId, controller.signal)) {
+        for await (const event of chatApi.sendMessage(text, threadId, controller.signal, agentId)) {
           if (event.type === "content") {
             // 第一次收到文本内容时，如果有工具调用则先确保工具 bubble 存在
             if (assistantContent === "" && pendingToolCalls.length > 0) {
@@ -239,7 +260,7 @@ export function useChat() {
         }
       }
     },
-    [isLoading, threadId, loadThreads],
+    [isLoading, threadId, loadThreads, agentId],
   );
 
   // ----------------------------------------------------------
@@ -279,8 +300,11 @@ export function useChat() {
     threads,
     threadsLoading,
     aiLoading,
+    agentId,
+    agents,
     bubbleListRef,
     setInput,
+    setAgentId,
     loadThreads,
     switchThread,
     createNewChat,
