@@ -83,6 +83,7 @@ export function ChatInput({
                   onClick: ({ key }) => onAgentChange(key),
                 }}
                 trigger={["click"]}
+                disabled={loading}
               >
                 <Button size="small" icon={<RobotOutlined />}>
                   {currentAgent?.name ?? agentId}{" "}
