@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "biome check --apply-unsafe",
+    "lint:check": "biome check",
+    "format": "biome format --write",
+    "format:check": "biome format"
   },
   "dependencies": {
     "@ant-design/x": "^2.7.0",
@@ -27,6 +31,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
