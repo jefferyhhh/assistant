@@ -7,7 +7,22 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["src/**/*", "app/**/*", "components/**/*", "lib/**/*", "*.ts", "*.tsx", "*.js", "*.jsx","!node_modules", "!.next", "!out", "!dist", "!coverage"]
+		"includes": [
+			"src/**/*", 
+			"app/**/*", 
+			"components/**/*", 
+			"lib/**/*", 
+			"*.ts", 
+			"*.tsx", 
+			"*.js", 
+			"*.jsx",
+			"!node_modules", 
+			"!.next", 
+			"!out", 
+			"!dist", 
+			"!coverage",
+			"!src/app/globals.css"/* tailwind v4 语法无法识别*/
+		]
 	},
 	"formatter": {
 		"enabled": true,
@@ -28,6 +43,11 @@
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
 		}
 	},
 	"json": {
