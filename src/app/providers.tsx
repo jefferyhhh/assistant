@@ -17,6 +17,7 @@ function AntdStyleInjector({ children }: { children: React.ReactNode }) {
     return (
       <style
         data-antd-cssinjs=""
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: antd SSR 样式注入，内容来自extractStyle，非用户输入
         dangerouslySetInnerHTML={{ __html: styleText }}
       />
     );

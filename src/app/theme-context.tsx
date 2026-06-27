@@ -38,6 +38,7 @@ function getClientTheme(): Theme {
 /** 同步主题到 localStorage + cookie + <html> class */
 function applyTheme(theme: Theme) {
   localStorage.setItem(STORAGE_KEY, theme);
+  // biome-ignore lint/suspicious/noDocumentCookie: cookie 给 SSR读主题，兼容性优先
   document.cookie = `${COOKIE_KEY}=${theme};path=/;max-age=31536000;SameSite=Lax`;
   document.documentElement.classList.remove("light", "dark");
   document.documentElement.classList.add(theme);
@@ -54,7 +55,8 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   // 客户端挂载后，校验真实偏好（localStorage/系统）是否与 initialTheme 一致
-  useEffect(() => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 空依赖防止重复执行
+    useEffect(() => {
     const clientTheme = getClientTheme();
     if (clientTheme !== initialTheme) {
       setTheme(clientTheme);
@@ -63,7 +65,7 @@ export function ThemeProvider({
       // 确保 cookie 存在（首次访问时可能没有）
       applyTheme(initialTheme);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {

@@ -32,6 +32,7 @@ export function useChat() {
   // 会话列表
   // ----------------------------------------------------------
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
   const loadThreads = useCallback(async () => {
     setThreadsLoading(true);
     try {
@@ -69,6 +70,7 @@ export function useChat() {
   // 切换会话
   // ----------------------------------------------------------
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
   const switchThread = useCallback(async (key: string) => {
     setThreadId(key);
     setMessages([]);
@@ -127,6 +129,7 @@ export function useChat() {
   // 发送消息
   // ----------------------------------------------------------
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isLoading) return;
@@ -276,6 +279,7 @@ export function useChat() {
   // 删除会话
   // ----------------------------------------------------------
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
   const deleteThread = useCallback(
     async (key: string) => {
       try {
