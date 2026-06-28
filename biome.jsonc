@@ -26,9 +26,10 @@
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab",
+		"indentStyle": "space",
 		"lineWidth": 100,
-    	"lineEnding": "lf"
+    	"lineEnding": "lf",
+		"trailingNewline": true,
 	},
 	"linter": {
 		"enabled": true,
