@@ -27,14 +27,8 @@ function extractText(children: React.ReactNode): string {
   if (typeof children === "number") return String(children);
   if (!children) return "";
   if (Array.isArray(children)) return children.map(extractText).join("");
-  if (
-    typeof children === "object" &&
-    children !== null &&
-    "props" in children
-  ) {
-    return extractText(
-      (children as { props: { children?: React.ReactNode } }).props.children,
-    );
+  if (typeof children === "object" && children !== null && "props" in children) {
+    return extractText((children as { props: { children?: React.ReactNode } }).props.children);
   }
   return "";
 }
@@ -78,18 +72,10 @@ function CopyButton({ code }: { code: string }) {
 
 /** 语言标签 */
 function LanguageTag({ lang }: { lang: string }) {
-  return (
-    <span className="absolute top-2 left-3 text-xs text-white/30 select-none">
-      {lang}
-    </span>
-  );
+  return <span className="absolute top-2 left-3 text-xs text-white/30 select-none">{lang}</span>;
 }
 
-export function CodeHighlight({
-  lang,
-  block,
-  children,
-}: CodeHighlightProps) {
+export function CodeHighlight({ lang, block, children }: CodeHighlightProps) {
   const code = extractText(children);
 
   // 内联 code（行内代码）

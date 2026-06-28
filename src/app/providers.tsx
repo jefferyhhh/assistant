@@ -28,10 +28,7 @@ function AntdStyleInjector({ children }: { children: React.ReactNode }) {
       <XProvider
         theme={{
           cssVar: { prefix: "ant", key: currentTheme },
-          algorithm:
-            currentTheme === "dark"
-              ? antdTheme.darkAlgorithm
-              : antdTheme.defaultAlgorithm,
+          algorithm: currentTheme === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         }}
       >
         <App>{children}</App>

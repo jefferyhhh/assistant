@@ -31,7 +31,11 @@ export async function* sendMessage(
   signal?: AbortSignal,
   agentId?: string,
 ): AsyncGenerator<SSEEvent> {
-  const res = await requestStream("/api/chat", { message, threadId, stream: true, agentId }, signal);
+  const res = await requestStream(
+    "/api/chat",
+    { message, threadId, stream: true, agentId },
+    signal,
+  );
 
   const reader = res.body?.getReader();
   if (!reader) throw new Error("无法读取响应流");

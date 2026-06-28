@@ -43,9 +43,7 @@ export function ChatInput({
 
   const handleSubmit = (text: string) => {
     if (text.length > MAX_MESSAGE_LENGTH) {
-      message.warning(
-        `消息长度不能超过 ${MAX_MESSAGE_LENGTH} 个字符，当前 ${text.length} 个`,
-      );
+      message.warning(`消息长度不能超过 ${MAX_MESSAGE_LENGTH} 个字符，当前 ${text.length} 个`);
       return;
     }
     onSubmit(text);
@@ -73,9 +71,7 @@ export function ChatInput({
                     label: (
                       <div>
                         <div className="font-medium">{agent.name}</div>
-                        <div className="text-xs text-gray-400">
-                          {agent.description}
-                        </div>
+                        <div className="text-xs text-gray-400">{agent.description}</div>
                       </div>
                     ),
                   })),

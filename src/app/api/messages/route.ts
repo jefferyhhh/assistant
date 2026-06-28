@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     console.error("Get messages error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "服务器内部错误" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

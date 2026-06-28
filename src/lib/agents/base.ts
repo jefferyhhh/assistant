@@ -35,10 +35,7 @@ async function getCheckpointer(): Promise<MongoDBSaver> {
  * @param threadId - 对话线程 ID，用于多轮对话持久化
  * @returns 编译好的 LangGraph agent
  */
-export async function createAgentFromDefinition(
-  definition: AgentDefinition,
-  threadId?: string
-) {
+export async function createAgentFromDefinition(definition: AgentDefinition, threadId?: string) {
   const allTools = await getAllTools();
   const tools = definition.toolFilter ? definition.toolFilter(allTools) : allTools;
 

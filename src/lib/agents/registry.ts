@@ -42,10 +42,7 @@ export function listAgents(): Array<Pick<AgentDefinition, "id" | "name" | "descr
  * @param threadId - 对话线程 ID
  * @returns 编译好的 LangGraph agent
  */
-export async function createAgentFromRegistry(
-  agentId: string = "general",
-  threadId?: string
-) {
+export async function createAgentFromRegistry(agentId: string = "general", threadId?: string) {
   const definition = getAgentDefinition(agentId);
   return createAgentFromDefinition(definition, threadId);
 }

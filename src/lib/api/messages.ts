@@ -20,8 +20,6 @@ export interface HistoryMessage {
 
 /** 获取指定会话的历史消息 */
 export async function loadMessages(threadId: string): Promise<HistoryMessage[]> {
-  const data = await request<{ messages: HistoryMessage[] }>(
-    `/api/messages?threadId=${threadId}`,
-  );
+  const data = await request<{ messages: HistoryMessage[] }>(`/api/messages?threadId=${threadId}`);
   return data.messages || [];
 }

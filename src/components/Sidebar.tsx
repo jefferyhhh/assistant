@@ -2,12 +2,7 @@
 
 import { Button, Spin } from "antd";
 import { Conversations } from "@ant-design/x";
-import {
-  PlusOutlined,
-  DeleteOutlined,
-  SunOutlined,
-  MoonOutlined,
-} from "@ant-design/icons";
+import { PlusOutlined, DeleteOutlined, SunOutlined, MoonOutlined } from "@ant-design/icons";
 import { useTheme } from "@/app/theme-context";
 import type { ThreadItem } from "@/lib/api/threads";
 
@@ -45,12 +40,7 @@ export function Sidebar({
             icon={theme === "dark" ? <SunOutlined /> : <MoonOutlined />}
             onClick={toggleTheme}
           />
-          <Button
-            type="text"
-            size="small"
-            icon={<PlusOutlined />}
-            onClick={onCreateNewChat}
-          >
+          <Button type="text" size="small" icon={<PlusOutlined />} onClick={onCreateNewChat}>
             新对话
           </Button>
         </div>

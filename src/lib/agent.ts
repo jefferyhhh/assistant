@@ -98,15 +98,16 @@ export async function getThreadMessages(threadId: string): Promise<HistoryMessag
       if (msg.tool_calls && msg.tool_calls.length > 0) {
         historyMsg.toolCalls = msg.tool_calls.map((tc) => {
           const toolResult = tc.id ? toolResults.get(tc.id) : undefined;
-          const argsStr =
-            typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args ?? {});
+          const argsStr = typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args ?? {});
           return {
             id: tc.id || `${tc.name}-${Math.random().toString(36).slice(2, 8)}`,
             name: tc.name,
             args: argsStr,
             result: toolResult?.content,
             status: toolResult
-              ? toolResult.status === "error" ? ("error" as const) : ("done" as const)
+              ? toolResult.status === "error"
+                ? ("error" as const)
+                : ("done" as const)
               : ("done" as const),
           } satisfies ToolCall;
         });
@@ -166,13 +167,10 @@ export async function generateThreadTitle(threadId: string): Promise<string | nu
   });
 
   const res = await llm.invoke(
-    `为以下对话生成一个 10 字以内的中文标题，只返回标题文本，不要引号或标点。\n用户：${firstMsg.slice(0, 200)}`
+    `为以下对话生成一个 10 字以内的中文标题，只返回标题文本，不要引号或标点。\n用户：${firstMsg.slice(0, 200)}`,
   );
 
-  const title =
-    typeof res.content === "string"
-      ? res.content.trim()
-      : String(res.content).trim();
+  const title = typeof res.content === "string" ? res.content.trim() : String(res.content).trim();
 
   return title.slice(0, 30) || null;
 }

@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 
 export type Theme = "light" | "dark";
 
@@ -56,7 +49,7 @@ export function ThemeProvider({
 
   // 客户端挂载后，校验真实偏好（localStorage/系统）是否与 initialTheme 一致
   // biome-ignore lint/correctness/useExhaustiveDependencies: 空依赖防止重复执行
-    useEffect(() => {
+  useEffect(() => {
     const clientTheme = getClientTheme();
     if (clientTheme !== initialTheme) {
       setTheme(clientTheme);
@@ -75,11 +68,7 @@ export function ThemeProvider({
     });
   }, []);
 
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

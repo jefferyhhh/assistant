@@ -209,9 +209,7 @@ export function useChat() {
 
           if (event.type === "tool_end" && event.toolCall) {
             // 更新 pendingToolCalls 中对应项
-            const idx = pendingToolCalls.findIndex(
-              (tc) => tc.id === event.toolCall!.id,
-            );
+            const idx = pendingToolCalls.findIndex((tc) => tc.id === event.toolCall!.id);
             if (idx >= 0) {
               pendingToolCalls[idx] = event.toolCall;
             }

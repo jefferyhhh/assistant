@@ -54,7 +54,7 @@ export async function GET() {
     console.error("List threads error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "服务器内部错误" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -71,7 +71,7 @@ export async function POST() {
     console.error("Create thread error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "服务器内部错误" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -98,7 +98,7 @@ export async function DELETE(req: NextRequest) {
     console.error("Delete thread error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "服务器内部错误" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

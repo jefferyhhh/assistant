@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         $set: { title },
         $setOnInsert: { created_at: new Date() },
       },
-      { upsert: true }
+      { upsert: true },
     );
 
     return Response.json({ title });
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     console.error("Generate title error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "服务器内部错误" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

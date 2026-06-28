@@ -23,6 +23,5 @@ export const getCurrentTimeTool = tool(
     name: "get_current_time",
     description: "获取当前的日期和时间",
     schema: z.object({}),
-  }
+  },
 );
-

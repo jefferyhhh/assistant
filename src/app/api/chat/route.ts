@@ -28,10 +28,7 @@ export async function POST(req: NextRequest) {
     const maxLength = definition.maxMessageLength ?? DEFAULT_MAX_MESSAGE_LENGTH;
 
     if (message.length > maxLength) {
-      return Response.json(
-        { error: `消息长度不能超过 ${maxLength} 个字符` },
-        { status: 400 }
-      );
+      return Response.json({ error: `消息长度不能超过 ${maxLength} 个字符` }, { status: 400 });
     }
 
     const threadId = inputThreadId || randomUUID();
@@ -46,7 +43,7 @@ export async function POST(req: NextRequest) {
           try {
             const eventStream = agent.streamEvents(
               { messages: [new HumanMessage(message)] },
-              { ...config, version: "v2" }
+              { ...config, version: "v2" },
             );
 
             for await (const event of eventStream) {
@@ -69,9 +66,10 @@ export async function POST(req: NextRequest) {
                   toolCall: {
                     id: event.run_id,
                     name: event.name,
-                    args: typeof event.data?.input === "string"
-                      ? event.data.input
-                      : JSON.stringify(event.data?.input ?? {}),
+                    args:
+                      typeof event.data?.input === "string"
+                        ? event.data.input
+                        : JSON.stringify(event.data?.input ?? {}),
                     status: "running",
                   },
                   threadId,
@@ -86,9 +84,10 @@ export async function POST(req: NextRequest) {
                   toolCall: {
                     id: event.run_id,
                     name: event.name,
-                    result: typeof event.data?.output === "string"
-                      ? event.data.output
-                      : JSON.stringify(event.data?.output ?? ""),
+                    result:
+                      typeof event.data?.output === "string"
+                        ? event.data.output
+                        : JSON.stringify(event.data?.output ?? ""),
                     status: "done",
                   },
                   threadId,
@@ -121,10 +120,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // 非流式响应
-      const result = await agent.invoke(
-        { messages: [new HumanMessage(message)] },
-        config
-      );
+      const result = await agent.invoke({ messages: [new HumanMessage(message)] }, config);
 
       const lastMessage = result.messages[result.messages.length - 1];
       return Response.json({
@@ -136,7 +132,7 @@ export async function POST(req: NextRequest) {
     console.error("Chat API error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "服务器内部错误" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
