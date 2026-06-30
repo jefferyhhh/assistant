@@ -6,10 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "biome check --apply-unsafe",
-    "lint:check": "biome check",
-    "format": "biome format --write",
-    "format:check": "biome format"
+    "lint": "biome lint src",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "fix": "biome check --write ."
   },
   "dependencies": {
     "@ant-design/x": "^2.7.0",

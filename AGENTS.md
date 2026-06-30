@@ -1,7 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
 
 # AI Assistant 项目文档
@@ -12,16 +14,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 前端框架 | Next.js 16 (App Router, Turbopack) |
-| UI 组件 | Ant Design 6 + @ant-design/x（Bubble/Sender/Conversations/Welcome/ThoughtChain） + @ant-design/x-markdown |
-| AI 后端 | LangGraph (ReAct Agent) + LangChain.js |
-| LLM | OpenAI API（可配置 baseUrl 兼容其它 provider） |
-| 数据库 | MongoDB（对话状态持久化，通过 MongoDBSaver checkpoint） |
-| 工具协议 | MCP (Model Context Protocol) |
-| 样式 | Tailwind CSS 4 |
-| 语言 | TypeScript (strict) |
+| 层级     | 技术                                                                                                      |
+| -------- | --------------------------------------------------------------------------------------------------------- |
+| 前端框架 | Next.js 16 (App Router, Turbopack)                                                                        |
+| UI 组件  | Ant Design 6 + @ant-design/x（Bubble/Sender/Conversations/Welcome/ThoughtChain） + @ant-design/x-markdown |
+| AI 后端  | LangGraph (ReAct Agent) + LangChain.js                                                                    |
+| LLM      | OpenAI API（可配置 baseUrl 兼容其它 provider）                                                            |
+| 数据库   | MongoDB（对话状态持久化，通过 MongoDBSaver checkpoint）                                                   |
+| 工具协议 | MCP (Model Context Protocol)                                                                              |
+| 样式     | Tailwind CSS 4                                                                                            |
+| 语言     | TypeScript (strict)                                                                                       |
 
 ## 目录结构
 
@@ -119,6 +121,13 @@ AGENT_SYSTEM_PROMPT=...       # 可选，自定义系统提示
 MCP_CONFIG_PATH=./mcp-servers.json
 ```
 
+## 命令
+
+- Build: `npm run build`
+- Type Check: `npx tsc --noEmit`
+- Lint/Static Analysis: `npm run check`
+- Safe Fixes + Format:`npm run fix`
+
 ## 约定
 
 - 路径别名：`@/*` → `./src/*`
@@ -127,3 +136,6 @@ MCP_CONFIG_PATH=./mcp-servers.json
 - 同目录用相对导入 `./`，跨目录用 `@/` 别名
 - API 路由统一返回 JSON，错误返回 `{ error: string }` + 对应状态码
 - **消息提示必须使用 `useMessage` hook**：不要直接调用 `antd.message`，通过 `const { message } = useMessage()` 获取实例，以正确继承主题上下文和全局配置
+- 在完成任何代码编写、修改或重构后，**必须**运行 `npm run check` 进行代码静态分析。
+- 如果静态分析报错，必须优先修复所有的 Lint 错误（可以尝试运行 `npm run fix`），确保没有任何警告和错误后，才允许结束任务。
+
