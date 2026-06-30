@@ -1,70 +1,27 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { BubbleItemType } from "@ant-design/x";
 import { useMessage } from "./useMessage";
-import * as threadsApi from "@/lib/api/threads";
+import { useAgents } from "./useAgents";
+import { useThreads } from "./useThreads";
 import * as messagesApi from "@/lib/api/messages";
 import * as chatApi from "@/lib/api/chat";
-import * as agentsApi from "@/lib/api/agents";
-import type { AgentItem } from "@/lib/api/agents";
-import type { ThreadItem } from "@/lib/api/threads";
+import * as threadsApi from "@/lib/api/threads";
 import type { ToolCall } from "@/lib/api/messages";
-
-// Re-export 给外部使用（如 Sidebar）
-export type { ThreadItem };
 
 export function useChat() {
   const message = useMessage();
+  const { agents, agentId, setAgentId } = useAgents();
+  const { threads, threadsLoading, loadThreads, deleteThread: deleteThreadBase } = useThreads();
+
   const [messages, setMessages] = useState<BubbleItemType[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
-  const [threads, setThreads] = useState<ThreadItem[]>([]);
-  const [threadsLoading, setThreadsLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [agentId, setAgentId] = useState<string>("general");
-  const [agents, setAgents] = useState<AgentItem[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const bubbleListRef = useRef<any>(null);
-
-  // ----------------------------------------------------------
-  // 会话列表
-  // ----------------------------------------------------------
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
-  const loadThreads = useCallback(async () => {
-    setThreadsLoading(true);
-    try {
-      const items = await threadsApi.loadThreads();
-      setThreads(items);
-    } catch {
-      message.error("加载会话列表失败");
-    } finally {
-      setThreadsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadThreads();
-  }, [loadThreads]);
-
-  // ----------------------------------------------------------
-  // Agent 列表
-  // ----------------------------------------------------------
-
-  const loadAgents = useCallback(async () => {
-    try {
-      const items = await agentsApi.loadAgents();
-      setAgents(items);
-    } catch {
-      // 静默失败，不影响主流程
-    }
-  }, []);
-
-  useEffect(() => {
-    loadAgents();
-  }, [loadAgents]);
 
   // ----------------------------------------------------------
   // 切换会话
@@ -277,21 +234,14 @@ export function useChat() {
   // 删除会话
   // ----------------------------------------------------------
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
   const deleteThread = useCallback(
     async (key: string) => {
-      try {
-        await threadsApi.deleteThread(key);
-        if (key === threadId) {
-          setThreadId(null);
-          setMessages([]);
-        }
-        loadThreads();
-      } catch {
-        message.error("删除会话失败");
-      }
+      await deleteThreadBase(key, threadId, () => {
+        setThreadId(null);
+        setMessages([]);
+      });
     },
-    [threadId, loadThreads],
+    [threadId, deleteThreadBase],
   );
 
   return {
