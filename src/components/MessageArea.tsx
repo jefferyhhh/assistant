@@ -32,7 +32,7 @@ function ToolCallChain({ toolCalls }: { toolCalls: ToolCall[] }) {
           {tc.args && tc.args !== "{}" && (
             <div>
               <Typography.Text type="secondary">参数:</Typography.Text>{" "}
-              <code className="bg-neutral-100 dark:bg-neutral-700 px-1 py-0.5 rounded break-all">
+              <code className="bg-neutral-100 dark:bg-neutral-700 px-1 py-0.5 rounded break-all max-h-40 overflow-auto inline-block align-top">
                 {tc.args}
               </code>
             </div>
@@ -40,7 +40,7 @@ function ToolCallChain({ toolCalls }: { toolCalls: ToolCall[] }) {
           {tc.result && (
             <div>
               <Typography.Text type="secondary">结果:</Typography.Text>{" "}
-              <code className="bg-neutral-100 dark:bg-neutral-700 px-1 py-0.5 rounded break-all">
+              <code className="bg-neutral-100 dark:bg-neutral-700 px-1 py-0.5 rounded break-all max-h-40 overflow-auto inline-block align-top">
                 {tc.result}
               </code>
             </div>
