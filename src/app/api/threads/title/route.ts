@@ -4,10 +4,10 @@
  * 为指定会话生成 LLM 标题并存入 thread_metadata 集合
  */
 
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { generateThreadTitle } from "@/lib/agent";
-import { ensureMongoConnected } from "@/lib/mongodb";
 import { config } from "@/lib/config";
+import { ensureMongoConnected } from "@/lib/mongodb";
 
 export async function POST(req: NextRequest) {
   try {

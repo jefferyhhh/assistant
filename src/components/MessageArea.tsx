@@ -1,18 +1,12 @@
 "use client";
 
-import {
-  Actions,
-  Bubble,
-  type BubbleItemType,
-  ThoughtChain,
-  Welcome,
-} from "@ant-design/x";
-import type { ThoughtChainItemType } from "@ant-design/x";
-import { XMarkdown } from "@ant-design/x-markdown";
-import { CodeHighlight } from "./CodeHighlight";
-import { Typography } from "antd";
 import { ToolOutlined } from "@ant-design/icons";
+import type { ThoughtChainItemType } from "@ant-design/x";
+import { Actions, Bubble, type BubbleItemType, ThoughtChain, Welcome } from "@ant-design/x";
+import { XMarkdown } from "@ant-design/x-markdown";
+import { Typography } from "antd";
 import type { ToolCall } from "@/lib/api/messages";
+import { CodeHighlight } from "./CodeHighlight";
 
 // ============================================================
 // 工具调用 ThoughtChain 组件
@@ -30,11 +24,7 @@ function ToolCallChain({ toolCalls }: { toolCalls: ToolCall[] }) {
       key: tc.id,
       title: tc.name,
       description:
-        tc.status === "running"
-          ? "执行中…"
-          : tc.status === "error"
-            ? "执行失败"
-            : "已完成",
+        tc.status === "running" ? "执行中…" : tc.status === "error" ? "执行失败" : "已完成",
       status: statusMap[tc.status] ?? "success",
       collapsible: true,
       content: (
@@ -81,11 +71,7 @@ interface MessageAreaProps {
   bubbleListRef: React.RefObject<any>;
 }
 
-export function MessageArea({
-  messages,
-  aiLoading,
-  bubbleListRef,
-}: MessageAreaProps) {
+export function MessageArea({ messages, aiLoading, bubbleListRef }: MessageAreaProps) {
   return (
     <div className="flex-1 overflow-auto px-6 py-4">
       {messages.length === 0 ? (
@@ -114,9 +100,7 @@ export function MessageArea({
               },
             },
             ai: (item) => {
-              const extraInfo = (item as any).extraInfo as
-                | { toolCalls?: ToolCall[] }
-                | undefined;
+              const extraInfo = (item as any).extraInfo as { toolCalls?: ToolCall[] } | undefined;
               const toolCalls = extraInfo?.toolCalls;
 
               // 工具调用 bubble —— 用 ThoughtChain 渲染
@@ -131,15 +115,11 @@ export function MessageArea({
               // 正常 AI 消息
               return {
                 placement: "start",
-                loading:
-                  aiLoading && item.key === messages[messages.length - 1]?.key,
+                loading: aiLoading && item.key === messages[messages.length - 1]?.key,
                 variant: "filled",
                 typing: { effect: "typing", step: 3, interval: 50 },
                 contentRender: (content) => (
-                  <XMarkdown
-                    components={{ code: CodeHighlight }}
-                    openLinksInNewTab={true}
-                  >
+                  <XMarkdown components={{ code: CodeHighlight }} openLinksInNewTab={true}>
                     {content}
                   </XMarkdown>
                 ),

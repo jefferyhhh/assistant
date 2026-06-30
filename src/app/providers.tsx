@@ -1,11 +1,11 @@
 "use client";
 
+import { createCache, extractStyle, StyleProvider } from "@ant-design/cssinjs";
 import { XProvider } from "@ant-design/x";
 import { App, theme as antdTheme } from "antd";
-import { StyleProvider, extractStyle, createCache } from "@ant-design/cssinjs";
 import { useServerInsertedHTML } from "next/navigation";
 import { useRef } from "react";
-import { ThemeProvider, useTheme, type Theme } from "./theme-context";
+import { type Theme, ThemeProvider, useTheme } from "./theme-context";
 
 function AntdStyleInjector({ children }: { children: React.ReactNode }) {
   const { theme: currentTheme } = useTheme();

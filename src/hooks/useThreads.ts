@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useMessage } from "./useMessage";
-import * as threadsApi from "@/lib/api/threads";
+import { useCallback, useEffect, useState } from "react";
 import type { ThreadItem } from "@/lib/api/threads";
+import * as threadsApi from "@/lib/api/threads";
+import { useMessage } from "./useMessage";
 
 export type { ThreadItem };
 
@@ -35,11 +35,7 @@ export function useThreads() {
    */
   // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
   const deleteThread = useCallback(
-    async (
-      key: string,
-      currentThreadId: string | null,
-      onDeleteCurrent?: () => void,
-    ) => {
+    async (key: string, currentThreadId: string | null, onDeleteCurrent?: () => void) => {
       try {
         await threadsApi.deleteThread(key);
         if (key === currentThreadId) {

@@ -22,8 +22,8 @@ const localTools: StructuredTool[] = [getCurrentTimeTool];
 // ============================================================
 //
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
-import { config } from "@/lib/config";
 import { readFileSync } from "fs";
+import { config } from "@/lib/config";
 
 let mcpClient: MultiServerMCPClient | null = null;
 

@@ -9,18 +9,16 @@
  *   2. 在 registry.ts 中 import 并 registerAgent()
  */
 
-// 注册表 API
-export {
-  registerAgent,
-  getAgentDefinition,
-  listAgents,
-  createAgentFromRegistry,
-} from "./registry";
-
-// 类型
-export type { AgentDefinition } from "./types";
-
+export { codingAgent } from "./coding-agent";
 // Agent 定义（供外部直接引用）
 export { generalAgent } from "./general-agent";
-export { codingAgent } from "./coding-agent";
+// 注册表 API
+export {
+  createAgentFromRegistry,
+  getAgentDefinition,
+  listAgents,
+  registerAgent,
+} from "./registry";
 export { researchAgent } from "./research-agent";
+// 类型
+export type { AgentDefinition } from "./types";

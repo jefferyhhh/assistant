@@ -62,6 +62,7 @@ function CopyButton({ code }: { code: string }) {
   return (
     <button
       onClick={handleCopy}
+      type="button"
       className="absolute top-2 right-2 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/50 backdrop-blur transition-all hover:bg-white/10 hover:text-white/80"
       title={copied ? "已复制" : "复制代码"}
     >

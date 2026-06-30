@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import * as agentsApi from "@/lib/api/agents";
+import { useCallback, useEffect, useState } from "react";
 import type { AgentItem } from "@/lib/api/agents";
+import * as agentsApi from "@/lib/api/agents";
 
 export function useAgents() {
   const [agents, setAgents] = useState<AgentItem[]>([]);

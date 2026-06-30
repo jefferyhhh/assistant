@@ -6,12 +6,12 @@
  * 请求体: { message: string, threadId?: string, stream?: boolean }
  */
 
-import { NextRequest } from "next/server";
 import { HumanMessage } from "@langchain/core/messages";
+import { randomUUID } from "crypto";
+import type { NextRequest } from "next/server";
 import { getThreadConfig } from "@/lib/agent";
 import { createAgentFromRegistry, getAgentDefinition } from "@/lib/agents";
 import type { ChatRequest } from "@/types";
-import { randomUUID } from "crypto";
 
 const DEFAULT_MAX_MESSAGE_LENGTH = 32000;
 

@@ -3,7 +3,7 @@
  * GET /api/messages?threadId=xxx — 获取指定会话的历史消息
  */
 
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { getThreadMessages } from "@/lib/agent";
 
 export async function GET(req: NextRequest) {

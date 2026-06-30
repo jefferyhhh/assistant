@@ -3,11 +3,11 @@
  * 管理所有可用的 Agent 定义，提供注册、查询和创建功能
  */
 
-import type { AgentDefinition } from "./types";
 import { createAgentFromDefinition } from "./base";
-import { generalAgent } from "./general-agent";
 import { codingAgent } from "./coding-agent";
+import { generalAgent } from "./general-agent";
 import { researchAgent } from "./research-agent";
+import type { AgentDefinition } from "./types";
 
 /** 内置 Agent 注册表 */
 const agents = new Map<string, AgentDefinition>();

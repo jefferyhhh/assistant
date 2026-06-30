@@ -5,10 +5,10 @@
  * DELETE /api/threads?id=xx — 删除线程
  */
 
-import { NextRequest } from "next/server";
-import { ensureMongoConnected } from "@/lib/mongodb";
-import { config } from "@/lib/config";
 import { randomUUID } from "crypto";
+import type { NextRequest } from "next/server";
+import { config } from "@/lib/config";
+import { ensureMongoConnected } from "@/lib/mongodb";
 
 /**
  * GET /api/threads — 列出线程

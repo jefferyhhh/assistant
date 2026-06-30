@@ -1,9 +1,9 @@
 "use client";
 
-import { useChat } from "@/hooks/useChat";
-import { Sidebar } from "@/components/Sidebar";
-import { MessageArea } from "@/components/MessageArea";
 import { ChatInput } from "@/components/ChatInput";
+import { MessageArea } from "@/components/MessageArea";
+import { Sidebar } from "@/components/Sidebar";
+import { useChat } from "@/hooks/useChat";
 
 // ============================================================
 // 页面组件

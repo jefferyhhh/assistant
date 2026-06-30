@@ -9,12 +9,12 @@
  *   import { createAgentFromRegistry } from "@/lib/agents"
  */
 
-import { createAgentFromRegistry } from "@/lib/agents/registry";
-import { getCheckpointer } from "@/lib/agents/base";
-import { ChatOpenAI } from "@langchain/openai";
-import { config } from "./config";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { ToolCall, HistoryMessage } from "@/lib/api/messages";
+import { ChatOpenAI } from "@langchain/openai";
+import { getCheckpointer } from "@/lib/agents/base";
+import { createAgentFromRegistry } from "@/lib/agents/registry";
+import type { HistoryMessage, ToolCall } from "@/lib/api/messages";
+import { config } from "./config";
 
 /**
  * 创建默认 Agent 实例（向后兼容）
