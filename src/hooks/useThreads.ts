@@ -18,6 +18,14 @@ export function useThreads() {
     try {
       const items = await threadsApi.loadThreads();
       setThreads(items);
+
+      // 为没有标题的会话补生成标题（fire-and-forget）
+      const untitled = items.filter((t) => !t.title);
+      if (untitled.length > 0) {
+        Promise.allSettled(untitled.map((t) => threadsApi.generateThreadTitle(t.key))).then(() =>
+          loadThreads(),
+        );
+      }
     } catch {
       message.error("加载会话列表失败");
     } finally {
