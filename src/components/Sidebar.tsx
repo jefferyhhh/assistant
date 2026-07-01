@@ -2,7 +2,8 @@
 
 import { DeleteOutlined, MoonOutlined, PlusOutlined, SunOutlined } from "@ant-design/icons";
 import { Conversations } from "@ant-design/x";
-import { Button, Spin } from "antd";
+import { Button, Skeleton, Spin } from "antd";
+import { useMemo } from "react";
 import { useTheme } from "@/app/theme-context";
 import type { ThreadItem } from "@/lib/api/threads";
 
@@ -29,6 +30,20 @@ export function Sidebar({
 }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
 
+  // 将无标题的会话 label 替换为骨架屏
+  const conversationItems = useMemo(
+    () =>
+      threads.map((t) => ({
+        ...t,
+        label: t.title ? (
+          t.label
+        ) : (
+          <Skeleton.Input size="small" active style={{ width: 120, height: 14 }} />
+        ),
+      })),
+    [threads],
+  );
+
   return (
     <div className="flex w-[260px] flex-col border-r border-border bg-surface">
       <div className="flex items-center justify-between px-3 pt-4 pb-2">
@@ -48,7 +63,7 @@ export function Sidebar({
       <div className="flex-1 overflow-auto px-1">
         <Spin spinning={threadsLoading}>
           <Conversations
-            items={threads}
+            items={conversationItems}
             activeKey={threadId ?? undefined}
             onActiveChange={onSwitchThread}
             menu={(item) => ({

@@ -1,10 +1,11 @@
 "use client";
 
 import type { BubbleItemType } from "@ant-design/x";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as chatApi from "@/lib/api/chat";
 import type { ToolCall } from "@/lib/api/messages";
 import * as messagesApi from "@/lib/api/messages";
+import * as tasksApi from "@/lib/api/tasks";
 import * as threadsApi from "@/lib/api/threads";
 import { useAgents } from "./useAgents";
 import { useMessage } from "./useMessage";
@@ -22,55 +23,184 @@ export function useChat() {
   const [aiLoading, setAiLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bubbleListRef = useRef<any>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 组件卸载时清理轮询定时器
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+      }
+    };
+  }, []);
+
+  // ----------------------------------------------------------
+  // 切换会话
+  // ----------------------------------------------------------
+
+  // ----------------------------------------------------------
+  // 加载会话消息（内部辅助，switchThread 和轮询完成后复用）
+  // ----------------------------------------------------------
+
+  const loadMessagesForThread = useCallback(async (key: string) => {
+    const history = await messagesApi.loadMessages(key);
+    if (history.length) {
+      const loaded: BubbleItemType[] = [];
+      for (let i = 0; i < history.length; i++) {
+        const msg = history[i];
+
+        // 如果 AI 消息有工具调用，先插入一个工具调用 bubble
+        if (msg.role === "ai" && msg.toolCalls && msg.toolCalls.length > 0) {
+          loaded.push({
+            key: `tools-${key}-${i}`,
+            role: "ai",
+            content: "",
+            status: "success",
+            extraInfo: { toolCalls: msg.toolCalls },
+          });
+        }
+
+        // 跳过空内容或仅包含空白字符的 AI 消息（仅有工具调用时，AI 的中间消息无文本）
+        if (msg.role === "ai" && !msg.content?.trim()) {
+          continue;
+        }
+
+        loaded.push({
+          key: `${msg.role}-${key}-${i}`,
+          role: msg.role,
+          content: msg.content,
+          status: "success",
+        });
+      }
+      setMessages(loaded);
+    }
+  }, []);
+
+  // ----------------------------------------------------------
+  // 轮询后台任务状态
+  // ----------------------------------------------------------
+
+  const pollTaskStatus = useCallback(
+    (taskId: string, targetThreadId: string) => {
+      const poll = async () => {
+        try {
+          const task = await tasksApi.getTask(taskId);
+
+          if (task.status === "completed") {
+            // 任务完成，重新加载消息（checkpoint 已更新）
+            await loadMessagesForThread(targetThreadId);
+            setIsLoading(false);
+            setAiLoading(false);
+
+            // 检查是否需要生成标题
+            threadsApi
+              .generateThreadTitle(targetThreadId)
+              .then(() => loadThreads())
+              .catch(() => loadThreads());
+            return;
+          }
+
+          if (task.status === "failed") {
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                content: `❌ 后台任务失败: ${task.error || "未知错误"}`,
+                status: "error",
+              };
+              return updated;
+            });
+            setIsLoading(false);
+            setAiLoading(false);
+            return;
+          }
+
+          if (task.status === "cancelled") {
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                content: "⚠️ 任务已取消",
+                status: "error",
+              };
+              return updated;
+            });
+            setIsLoading(false);
+            setAiLoading(false);
+            return;
+          }
+
+          // 还在执行中，2 秒后继续轮询
+          pollTimerRef.current = setTimeout(poll, 2000);
+        } catch {
+          // 轮询出错，停止轮询并提示
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              content: "❌ 查询任务状态失败",
+              status: "error",
+            };
+            return updated;
+          });
+          setIsLoading(false);
+          setAiLoading(false);
+        }
+      };
+
+      poll();
+    },
+    [loadMessagesForThread, loadThreads],
+  );
 
   // ----------------------------------------------------------
   // 切换会话
   // ----------------------------------------------------------
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
-  const switchThread = useCallback(async (key: string) => {
-    setThreadId(key);
-    setMessages([]);
-    setAiLoading(true);
+  const switchThread = useCallback(
+    async (key: string) => {
+      // 清理之前的轮询
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
 
-    try {
-      const history = await messagesApi.loadMessages(key);
-      if (history.length) {
-        const loaded: BubbleItemType[] = [];
-        for (let i = 0; i < history.length; i++) {
-          const msg = history[i];
+      setThreadId(key);
+      setMessages([]);
+      setAiLoading(true);
 
-          // 如果 AI 消息有工具调用，先插入一个工具调用 bubble
-          if (msg.role === "ai" && msg.toolCalls && msg.toolCalls.length > 0) {
-            loaded.push({
-              key: `tools-${key}-${i}`,
+      try {
+        await loadMessagesForThread(key);
+
+        // 检查是否有未完成的后台任务
+        const runningTasks = await tasksApi.getTasksByThread(key, "running");
+        const pendingTasks = await tasksApi.getTasksByThread(key, "pending");
+        const activeTask = runningTasks[0] || pendingTasks[0];
+
+        if (activeTask) {
+          // 有未完成任务，显示 loading 并开始轮询
+          setIsLoading(true);
+          setAiLoading(true);
+          setMessages((prev) => [
+            ...prev,
+            {
+              key: `ai-poll-${Date.now()}`,
               role: "ai",
               content: "",
-              status: "success",
-              extraInfo: { toolCalls: msg.toolCalls },
-            });
-          }
-
-          // 跳过空内容或仅包含空白字符的 AI 消息（仅有工具调用时，AI 的中间消息无文本）
-          if (msg.role === "ai" && !msg.content?.trim()) {
-            continue;
-          }
-
-          loaded.push({
-            key: `${msg.role}-${key}-${i}`,
-            role: msg.role,
-            content: msg.content,
-            status: "success",
-          });
+              status: "loading",
+            },
+          ]);
+          pollTaskStatus(activeTask.taskId, key);
         }
-        setMessages(loaded);
+      } catch {
+        message.error("加载会话历史失败");
+      } finally {
+        setAiLoading(false);
       }
-    } catch {
-      message.error("加载会话历史失败");
-    } finally {
-      setAiLoading(false);
-    }
-  }, []);
+    },
+    [loadMessagesForThread, pollTaskStatus],
+  );
 
   // ----------------------------------------------------------
   // 新对话
@@ -195,6 +325,34 @@ export function useChat() {
         }
       } catch (error) {
         if ((error as Error).name === "AbortError") return;
+
+        // 流中断时，检查是否有后台任务在运行（服务端可能继续执行）
+        const currentThreadId = threadId || newThreadId;
+        if (currentThreadId) {
+          try {
+            const runningTasks = await tasksApi.getTasksByThread(currentThreadId, "running");
+            const pendingTasks = await tasksApi.getTasksByThread(currentThreadId, "pending");
+            const activeTask = runningTasks[0] || pendingTasks[0];
+
+            if (activeTask) {
+              // 有后台任务在跑，切换到轮询模式
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  content: "",
+                  status: "loading",
+                };
+                return updated;
+              });
+              pollTaskStatus(activeTask.taskId, currentThreadId);
+              return; // 不显示错误，交给轮询处理
+            }
+          } catch {
+            // 查询任务失败，走正常错误流程
+          }
+        }
+
         setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
@@ -218,7 +376,7 @@ export function useChat() {
         }
       }
     },
-    [isLoading, threadId, loadThreads, agentId],
+    [isLoading, threadId, loadThreads, agentId, pollTaskStatus],
   );
 
   // ----------------------------------------------------------
@@ -227,7 +385,12 @@ export function useChat() {
 
   const cancelGeneration = useCallback(() => {
     abortRef.current?.abort();
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
     setIsLoading(false);
+    setAiLoading(false);
   }, []);
 
   // ----------------------------------------------------------

@@ -10,6 +10,7 @@ export interface SSEEvent {
   type: "content" | "done" | "error" | "tool_start" | "tool_end";
   content?: string;
   threadId?: string;
+  taskId?: string;
   error?: string;
   toolCall?: ToolCall;
 }

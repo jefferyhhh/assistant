@@ -2,8 +2,8 @@
  * 聊天 API
  * POST /api/chat
  *
- * 支持流式响应（SSE）和非流式响应
- * 请求体: { message: string, threadId?: string, stream?: boolean }
+ * 支持流式响应（SSE）、非流式响应和后台执行模式
+ * 请求体: { message: string, threadId?: string, stream?: boolean, background?: boolean }
  */
 
 import { HumanMessage } from "@langchain/core/messages";
@@ -11,6 +11,8 @@ import { randomUUID } from "crypto";
 import type { NextRequest } from "next/server";
 import { getThreadConfig } from "@/lib/agent";
 import { createAgentFromRegistry, getAgentDefinition } from "@/lib/agents";
+import { executeTask } from "@/lib/tasks/executor";
+import { createTask } from "@/lib/tasks/store";
 import type { ChatRequest } from "@/types";
 
 const DEFAULT_MAX_MESSAGE_LENGTH = 32000;
@@ -18,7 +20,7 @@ const DEFAULT_MAX_MESSAGE_LENGTH = 32000;
 export async function POST(req: NextRequest) {
   try {
     const body: ChatRequest & { stream?: boolean } = await req.json();
-    const { message, threadId: inputThreadId, agentId, stream = true } = body;
+    const { message, threadId: inputThreadId, agentId, stream = true, background } = body;
 
     if (!message?.trim()) {
       return Response.json({ error: "消息不能为空" }, { status: 400 });
@@ -32,6 +34,23 @@ export async function POST(req: NextRequest) {
     }
 
     const threadId = inputThreadId || randomUUID();
+
+    // 后台执行模式：创建任务记录，立即返回，后台异步执行
+    if (background) {
+      const task = await createTask({
+        threadId,
+        agentId: agentId || "general",
+        message,
+      });
+
+      // fire-and-forget，不阻塞响应
+      executeTask(task.taskId).catch((err) => {
+        console.error("[Chat API] Background task execution error:", err);
+      });
+
+      return Response.json({ taskId: task.taskId, threadId });
+    }
+
     const agent = await createAgentFromRegistry(agentId, threadId);
     const config = getThreadConfig(threadId);
 
