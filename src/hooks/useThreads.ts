@@ -59,5 +59,34 @@ export function useThreads() {
     [loadThreads],
   );
 
-  return { threads, threadsLoading, loadThreads, deleteThread };
+  /**
+   * 乐观更新：立即添加一个占位 thread（不等 API 返回）
+   * 用于新会话创建时第一时间显示在 Sidebar
+   */
+  const addPlaceholderThread = useCallback((placeholderKey: string) => {
+    setThreads((prev) => [{ key: placeholderKey, label: "新会话...", title: undefined }, ...prev]);
+  }, []);
+
+  /**
+   * 将占位 thread 的 key 更新为真实 threadId
+   * SSE done 事件返回真实 threadId 后调用
+   */
+  const updateThreadKey = useCallback((placeholderKey: string, realKey: string) => {
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.key === placeholderKey
+          ? { ...t, key: realKey, label: `会话 ${realKey.slice(0, 8)}...` }
+          : t,
+      ),
+    );
+  }, []);
+
+  return {
+    threads,
+    threadsLoading,
+    loadThreads,
+    deleteThread,
+    addPlaceholderThread,
+    updateThreadKey,
+  };
 }

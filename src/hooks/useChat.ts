@@ -14,7 +14,14 @@ import { useThreads } from "./useThreads";
 export function useChat() {
   const message = useMessage();
   const { agents, agentId, setAgentId } = useAgents();
-  const { threads, threadsLoading, loadThreads, deleteThread: deleteThreadBase } = useThreads();
+  const {
+    threads,
+    threadsLoading,
+    loadThreads,
+    deleteThread: deleteThreadBase,
+    addPlaceholderThread,
+    updateThreadKey,
+  } = useThreads();
 
   const [messages, setMessages] = useState<BubbleItemType[]>([]);
   const [input, setInput] = useState("");
@@ -22,6 +29,7 @@ export function useChat() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const activeThreadRef = useRef<string | null>(null);
   const bubbleListRef = useRef<any>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -160,6 +168,12 @@ export function useChat() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: message 方法在组件生命周期内稳
   const switchThread = useCallback(
     async (key: string) => {
+      // 中止正在进行的流式请求
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
+
       // 清理之前的轮询
       if (pollTimerRef.current) {
         clearTimeout(pollTimerRef.current);
@@ -168,8 +182,10 @@ export function useChat() {
 
       setThreadId(key);
       setMessages([]);
+      setIsLoading(true);
       setAiLoading(true);
 
+      let polling = false;
       try {
         await loadMessagesForThread(key);
 
@@ -180,8 +196,7 @@ export function useChat() {
 
         if (activeTask) {
           // 有未完成任务，显示 loading 并开始轮询
-          setIsLoading(true);
-          setAiLoading(true);
+          polling = true;
           setMessages((prev) => [
             ...prev,
             {
@@ -196,7 +211,11 @@ export function useChat() {
       } catch {
         message.error("加载会话历史失败");
       } finally {
-        setAiLoading(false);
+        // 无活跃任务时重置 loading；有轮询任务时由 pollTaskStatus 负责重置
+        if (!polling) {
+          setIsLoading(false);
+          setAiLoading(false);
+        }
       }
     },
     [loadMessagesForThread, pollTaskStatus],
@@ -240,8 +259,16 @@ export function useChat() {
 
       const controller = new AbortController();
       abortRef.current = controller;
+      const requestThreadId = threadId;
+      activeThreadRef.current = requestThreadId;
       const isNewThread = !threadId;
       let newThreadId: string | null = null;
+
+      // 乐观更新：新会话立即添加占位 thread，第一时间显示在 Sidebar
+      const placeholderKey = isNewThread ? `placeholder-${Date.now()}` : null;
+      if (placeholderKey) {
+        addPlaceholderThread(placeholderKey);
+      }
 
       try {
         let assistantContent = "";
@@ -316,6 +343,10 @@ export function useChat() {
           if (event.type === "done" && event.threadId) {
             newThreadId = event.threadId;
             setThreadId(event.threadId);
+            // 更新占位 thread 为真实 threadId，然后刷新列表获取标题
+            if (placeholderKey) {
+              updateThreadKey(placeholderKey, event.threadId);
+            }
             loadThreads();
           }
 
@@ -363,8 +394,11 @@ export function useChat() {
           return updated;
         });
       } finally {
-        setIsLoading(false);
-        setAiLoading(false);
+        // 若会话已切换，不重置 loading 状态（新会话有自己的 loading 生命周期）
+        if (activeThreadRef.current === requestThreadId) {
+          setIsLoading(false);
+          setAiLoading(false);
+        }
         abortRef.current = null;
 
         // 新会话生成标题（非阻塞）
