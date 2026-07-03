@@ -2,15 +2,7 @@
  * 共享类型定义
  */
 
-/** 聊天 API 请求体 */
-export interface ChatRequest {
-  message: string;
-  threadId?: string;
-  /** Agent ID，可选，默认 "general"。可选值：general / coding / research */
-  agentId?: string;
-  /** 是否后台执行（客户端断开后任务继续运行） */
-  background?: boolean;
-}
+export type { ChatRequest } from "@/lib/validations";
 
 /** 聊天 API 响应（非流式） */
 export interface ChatResponse {

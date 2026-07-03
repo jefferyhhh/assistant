@@ -6,16 +6,17 @@
 
 import type { NextRequest } from "next/server";
 import { generateThreadTitle } from "@/lib/agent";
+import { validateBody } from "@/lib/api-helpers";
 import { config } from "@/lib/config";
 import { ensureMongoConnected } from "@/lib/mongodb";
+import { ThreadTitleRequestSchema } from "@/lib/validations";
 
 export async function POST(req: NextRequest) {
   try {
-    const { threadId } = await req.json();
+    const parsed = await validateBody(req, ThreadTitleRequestSchema);
+    if (!parsed.success) return parsed.response;
 
-    if (!threadId) {
-      return Response.json({ error: "缺少 threadId" }, { status: 400 });
-    }
+    const { threadId } = parsed.data;
 
     // 检查是否已有标题
     const client = await ensureMongoConnected();

@@ -11,22 +11,21 @@ import { randomUUID } from "crypto";
 import type { NextRequest } from "next/server";
 import { getThreadConfig } from "@/lib/agent";
 import { createAgentFromRegistry, getAgentDefinition } from "@/lib/agents";
+import { validateBody } from "@/lib/api-helpers";
 import { executeTask } from "@/lib/tasks/executor";
 import { createTask } from "@/lib/tasks/store";
-import type { ChatRequest } from "@/types";
+import { ChatRequestSchema } from "@/lib/validations";
 
 const DEFAULT_MAX_MESSAGE_LENGTH = 32000;
 
 export async function POST(req: NextRequest) {
   try {
-    const body: ChatRequest & { stream?: boolean } = await req.json();
-    const { message, threadId: inputThreadId, agentId, stream = true, background } = body;
+    const parsed = await validateBody(req, ChatRequestSchema);
+    if (!parsed.success) return parsed.response;
 
-    if (!message?.trim()) {
-      return Response.json({ error: "消息不能为空" }, { status: 400 });
-    }
+    const { message, threadId: inputThreadId, agentId, stream, background } = parsed.data;
 
-    const definition = getAgentDefinition(agentId || "general");
+    const definition = getAgentDefinition(agentId);
     const maxLength = definition.maxMessageLength ?? DEFAULT_MAX_MESSAGE_LENGTH;
 
     if (message.length > maxLength) {

@@ -5,16 +5,15 @@
 
 import type { NextRequest } from "next/server";
 import { getThreadMessages } from "@/lib/agent";
+import { validateSearchParams } from "@/lib/api-helpers";
+import { MessagesQuerySchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest) {
   try {
-    const threadId = req.nextUrl.searchParams.get("threadId");
+    const parsed = validateSearchParams(req, MessagesQuerySchema);
+    if (!parsed.success) return parsed.response;
 
-    if (!threadId) {
-      return Response.json({ error: "缺少 threadId" }, { status: 400 });
-    }
-
-    const messages = await getThreadMessages(threadId);
+    const messages = await getThreadMessages(parsed.data.threadId);
     return Response.json({ messages });
   } catch (error) {
     console.error("Get messages error:", error);

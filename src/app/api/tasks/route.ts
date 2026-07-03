@@ -4,19 +4,17 @@
  */
 
 import type { NextRequest } from "next/server";
+import { validateSearchParams } from "@/lib/api-helpers";
 import { getTasksByThread } from "@/lib/tasks/store";
-import type { TaskStatus } from "@/lib/tasks/types";
+import { TasksQuerySchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest) {
   try {
-    const threadId = req.nextUrl.searchParams.get("threadId");
-    const status = req.nextUrl.searchParams.get("status") as TaskStatus | null;
+    const parsed = validateSearchParams(req, TasksQuerySchema);
+    if (!parsed.success) return parsed.response;
 
-    if (!threadId) {
-      return Response.json({ error: "threadId 参数必填" }, { status: 400 });
-    }
-
-    const tasks = await getTasksByThread(threadId, status || undefined);
+    const { threadId, status } = parsed.data;
+    const tasks = await getTasksByThread(threadId, status);
     return Response.json({ tasks });
   } catch (error) {
     console.error("Tasks API error:", error);

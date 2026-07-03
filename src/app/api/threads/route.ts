@@ -7,8 +7,10 @@
 
 import { randomUUID } from "crypto";
 import type { NextRequest } from "next/server";
+import { validateSearchParams } from "@/lib/api-helpers";
 import { config } from "@/lib/config";
 import { ensureMongoConnected } from "@/lib/mongodb";
+import { DeleteThreadQuerySchema } from "@/lib/validations";
 
 /**
  * GET /api/threads — 列出线程
@@ -81,10 +83,10 @@ export async function POST() {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const threadId = req.nextUrl.searchParams.get("id");
-    if (!threadId) {
-      return Response.json({ error: "缺少 thread id" }, { status: 400 });
-    }
+    const parsed = validateSearchParams(req, DeleteThreadQuerySchema);
+    if (!parsed.success) return parsed.response;
+
+    const { id: threadId } = parsed.data;
 
     const client = await ensureMongoConnected();
     const db = client.db(config.mongodb.dbName);
